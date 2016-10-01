@@ -1,0 +1,23 @@
+{
+  "name": "slib",
+  "version": "1.0.0",
+  "description": "server (node) specific extensions to the xlib library",
+  "main": "./dist/_index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Novaleaf/slib"
+  },
+  "keywords": [
+    "xlib",
+    "typescript"
+  ],
+  "author": "jasons@novaleaf.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Novaleaf/slib/issues"
+  },
+  "homepage": "https://github.com/Novaleaf/slib#readme"
+}
