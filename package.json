@@ -1,6 +1,6 @@
 {
   "name": "slib",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "server (node) specific extensions to the xlib library",
   "main": "./dist/_index.js",
   "types": "./dist/_index.d.ts",
