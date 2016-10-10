@@ -38,6 +38,7 @@
     "stripe": "^4.11.0",
     "universal-analytics": "^0.4.6",
     "wreck": "^10.0.0",
-    "xlib": "^5.0.8"
+    "xlib": "^5.0.8",
+    "zxcvbn": "^4.4.0"
   }
 }
