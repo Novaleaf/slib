@@ -1,5 +1,9 @@
 ﻿import * as xlib from "xlib";
-export { xlib };
+
+export {
+	/** cross platform base library */
+	xlib
+};
 
 
 

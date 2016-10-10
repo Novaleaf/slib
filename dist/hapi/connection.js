@@ -1,6 +1,6 @@
 //import refs = require("../refs");
 "use strict";
-var file = require("../../file");
+var file = require("../file");
 var xlib = require("xlib");
 var Promise = xlib.promise.bluebird;
 var log = new xlib.logging.Logger(__filename);

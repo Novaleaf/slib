@@ -1,6 +1,6 @@
 ﻿//import refs = require("../refs");
 
-import file = require("../../file");
+import file = require("../file");
 
 
 import xlib = require("xlib");

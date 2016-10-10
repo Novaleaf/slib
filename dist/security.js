@@ -49,20 +49,6 @@ rounds=15: ~3 sec/hash
 rounds=25: ~1 hour/hash
 rounds=31: 2-3 days/hash */
         rounds) {
-        /** default=12.  A note about the cost. When you are hashing your data the module will go through a series of rounds to give you a secure hash. The value you submit there is not just the number of rounds that the module will go through to hash your data. The module will use the value you enter and go through 2^rounds iterations of processing.
-
-From @garthk, on a 2GHz core you can roughly expect:
-
-rounds=8 : ~40 hashes/sec
-rounds=9 : ~20 hashes/sec
-rounds=10: ~10 hashes/sec
-rounds=11: ~5  hashes/sec
-rounds=12: 2-3 hashes/sec
-rounds=13: ~1 sec/hash
-rounds=14: ~1.5 sec/hash
-rounds=15: ~3 sec/hash
-rounds=25: ~1 hour/hash
-rounds=31: 2-3 days/hash */
         if (rounds === void 0) { rounds = __OldKdf._defaultRounds; }
         var promise = new Promise(function (callback, reject) {
             var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
@@ -90,10 +76,10 @@ rounds=31: 2-3 days/hash */
         });
         return promise;
     };
+    __OldKdf._defaultRounds = 12;
     return __OldKdf;
 }());
 exports.__OldKdf = __OldKdf;
-__OldKdf._defaultRounds = 12;
 /**
  * simple to use KDF.  modern, secure, gpu resistant, and promise friendly.
  *  https://en.wikipedia.org/wiki/Key_derivation_function
@@ -142,10 +128,10 @@ var Kdf = (function () {
         });
         return promise;
     };
+    Kdf._defaultOptions = { argon2d: false, memoryCost: 12, parallelism: 2, timeCost: 10 };
     return Kdf;
 }());
 exports.Kdf = Kdf;
-Kdf._defaultOptions = { argon2d: false, memoryCost: 12, parallelism: 2, timeCost: 10 };
 /**
  * A realistic password strength estimator https://github.com/dropbox/zxcvbn
 Could be run clientside, but is about 400KB in size, so probably not.  Idea?:  for client side, maybe try this if it's smaller: https://github.com/mozilla/fxa-password-strength-checker

@@ -24,7 +24,10 @@ var __ = xlib.lolo;
 /** helper will configure your http+https connections.  This does standard boilerplate for you, that's all. */
 exports.connection = require("./connection");
 /**
- *  extract the final client ip address, for use either when using a "bare" server or when using Google Compute's HTTP Load Balancer.
+ *  GOOGLE CLOUD SPECIFIC FUNCTIONALITY!!!!   though this might be useful for other systems that use load balancers (proxy) too.
+ *  will extract the final client ip address, for use either when using a "bare" server or when using Google Compute's HTTP Load Balancer.
+ *  searches request headers for "x-forwarded-for" to determine the client's ip.
+ *  THIS IS SECURITY SENSITIVE!!!  if you are not using a proxy but still use this function, a user can spoof this header to impersonate another ip address.   be careful in using this!  it is infrastructure dependent.
  *
  * @param request
  */
@@ -74,13 +77,10 @@ function ezRouteConfigAuthRequired(path,
     config, 
     /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
     doHandlerOnHeadRequests) {
-    /** default = ["POST"]*/
     if (method === void 0) { method = ["POST"]; }
-    /** default = { payload: { output: "data", parse: "gunzip" } } */
     if (config === void 0) { config = {
         payload: { output: "data", parse: "gunzip" }
     }; }
-    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
     if (doHandlerOnHeadRequests === void 0) { doHandlerOnHeadRequests = false; }
     var toReturn = {
         method: method,
@@ -172,14 +172,11 @@ function ezRouteConfigNoAuth(path,
     config, 
     /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
     doHandlerOnHeadRequests) {
-    /** default = ["POST"]*/
     if (method === void 0) { method = ["POST"]; }
-    /** default = { payload: { output: "data", parse: "gunzip" },auth: false } */
     if (config === void 0) { config = {
         payload: { output: "data", parse: "gunzip" },
         auth: false,
     }; }
-    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
     if (doHandlerOnHeadRequests === void 0) { doHandlerOnHeadRequests = false; }
     var toReturn = {
         method: method,

@@ -12,8 +12,15 @@ Tested on ubuntu 12.x and Windows 10.
 The main functional areas ```slib``` covers:
 
 - WebServer (Hapi and hapi specific helpers)
-- Security (KDF)
+- Security (KDF via argon2 or bcrypt, and password strength estimation)
 - File (Promise based ```fs``` library)
+- Analytics (serverside Google Analytics)
+- CommandLine Apps (cmd arg processing via commander)
+- External Services
+  - Google Cloud (Datastore Promise + ORM)
+  - Email (SendGrid integration)
+  - Payment Processing (Stripe integration)
+- 
 
 ----------------
 # Installation

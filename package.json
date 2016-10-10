@@ -31,7 +31,9 @@
     "commander": "^2.9.0",
     "fs-extra-promise": "^0.4.1",
     "hapi": "^15.1.1",
+    "sendgrid": "^4.5.0",
+    "stripe": "^4.11.0",
     "universal-analytics": "^0.4.6",
-    "xlib": "^5.0.5"
+    "xlib": "^5.0.8"
   }
 }

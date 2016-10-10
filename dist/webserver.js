@@ -6,5 +6,5 @@
 //export import http = require("http");
 /** the prefered webserver:  HAPI.  and also hapi helpers:  the hapi ecosystem
   helpers to reduce amount of boilerplate you need to write */
-exports.hapiEco = require("./_internal/hapi/hapi-eco");
+exports.hapiEco = require("./hapi/hapi-eco");
 //# sourceMappingURL=webserver.js.map

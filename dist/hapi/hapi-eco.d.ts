@@ -22,7 +22,10 @@ export declare var hapiAuthJwt2: any;
 /** helper will configure your http+https connections.  This does standard boilerplate for you, that's all. */
 export import connection = require("./connection");
 /**
- *  extract the final client ip address, for use either when using a "bare" server or when using Google Compute's HTTP Load Balancer.
+ *  GOOGLE CLOUD SPECIFIC FUNCTIONALITY!!!!   though this might be useful for other systems that use load balancers (proxy) too.
+ *  will extract the final client ip address, for use either when using a "bare" server or when using Google Compute's HTTP Load Balancer.
+ *  searches request headers for "x-forwarded-for" to determine the client's ip.
+ *  THIS IS SECURITY SENSITIVE!!!  if you are not using a proxy but still use this function, a user can spoof this header to impersonate another ip address.   be careful in using this!  it is infrastructure dependent.
  *
  * @param request
  */
