@@ -24,16 +24,19 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="src\" />
-    <Folder Include="src\_internal\hapi\" />
-    <Folder Include="src\_onhold\" />
-    <Folder Include="src\_internal\" />
+    <Folder Include="src\external\" />
+    <Folder Include="src\hapi\" />
+    <Folder Include="src\onhold\" />
+    <Folder Include="src\internal\" />
   </ItemGroup>
   <ItemGroup>
+    <TypeScriptCompile Include="src\external\gcloud.ts" />
+    <TypeScriptCompile Include="src\external\_index.ts" />
     <TypeScriptCompile Include="src\file.ts" />
     <TypeScriptCompile Include="src\security.ts" />
-    <TypeScriptCompile Include="src\_internal\hapi\connection.ts" />
-    <TypeScriptCompile Include="src\_internal\hapi\hapi-eco.ts" />
-    <TypeScriptCompile Include="src\_onhold\processmanager.ts" />
+    <TypeScriptCompile Include="src\hapi\connection.ts" />
+    <TypeScriptCompile Include="src\hapi\hapi-eco.ts" />
+    <TypeScriptCompile Include="src\onhold\processmanager.ts" />
     <TypeScriptCompile Include="src\webserver.ts" />
     <TypeScriptCompile Include="src\_index.ts" />
   </ItemGroup>

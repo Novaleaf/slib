@@ -1,6 +1,7 @@
 "use strict";
 var xlib = require("xlib");
 exports.xlib = xlib;
+/** cross platform base library.  npm xlib to use by itself */
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
@@ -28,7 +29,7 @@ exports.file = file;
 /** web server needs */
 exports.webserver = require("./webserver");
 /** external services such as billing, database, email. */
-//export import external = require("./external/external");
+exports.external = require("./external/_index");
 exports.security = require("./security");
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////

@@ -30,6 +30,7 @@
     "bcrypt": "^0.8.7",
     "commander": "^2.9.0",
     "fs-extra-promise": "^0.4.1",
+    "google-cloud": "^0.43.0",
     "h2o2": "^5.2.0",
     "hapi": "^15.1.1",
     "hapi-auth-jwt2": "^7.1.3",

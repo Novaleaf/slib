@@ -1,9 +1,11 @@
 ﻿import * as xlib from "xlib";
 
+/** cross platform base library.  npm xlib to use by itself */
 export {
 	/** cross platform base library */
 	xlib
 };
+
 
 
 
@@ -55,7 +57,7 @@ export import webserver = require("./webserver");
 
 
 /** external services such as billing, database, email. */
-//export import external = require("./external/external");
+export import external = require("./external/_index");
 
 
 export import security = require("./security");

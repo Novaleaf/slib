@@ -1,5 +1,4 @@
 /// <reference types="node" />
-/// <reference types="bluebird" />
 import xlib = require("xlib");
 import Promise = xlib.promise.bluebird;
 export interface IModuleImport {

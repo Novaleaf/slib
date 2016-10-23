@@ -1,4 +1,5 @@
 import * as xlib from "xlib";
+/** cross platform base library.  npm xlib to use by itself */
 export { xlib };
 export import childProcess = require("child_process");
 export import path = require("path");
@@ -12,6 +13,7 @@ export { file };
 /** web server needs */
 export import webserver = require("./webserver");
 /** external services such as billing, database, email. */
+export import external = require("./external/_index");
 export import security = require("./security");
 /** get resident memory usage of a pid in bytes.   works on windows or linux */
 export declare function getMemoryUsage(pid: number): number;
