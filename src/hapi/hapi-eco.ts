@@ -100,6 +100,9 @@ export function ezRouteConfigAuthRequired<TPayloadOut, TJwtAuthPayload>(path: st
 		config,
 		handler: (request, reply) => {
 
+            log.debug("ezRouteConfigAuthRequired got request", { path,request:requestToJson(request)});
+
+
 			if (request.method === "head" && doHandlerOnHeadRequests === false) {
 				reply("");
 				return;
@@ -154,12 +157,25 @@ export function ezRouteConfigAuthRequired<TPayloadOut, TJwtAuthPayload>(path: st
  * construct a POJO object from the request, suitable for logging
  * @param request
  */
-export function requestToJson(request: hapi.Request) {
+export function requestToJson(request: hapi.Request, options: { verboseRequestLogs?:boolean } = {}) {
+
+
+    let hapiRequestLogs: string[];
+    
+    try {
+        if (options.verboseRequestLogs === true) {
+            hapiRequestLogs = request.getLog();
+        } else {
+            hapiRequestLogs = ["verbose logs disabled in requestToJson(options)"];
+        }
+    } catch (ex) {
+        hapiRequestLogs = ["unable to get hapi request logs.  you must set server.connection({ routes: { log: true }as any }); to enable them."]
+    }
 	return {
 		auth: request.auth,
 		connectionInfo: request.connection.info,
 		method: request.method,
-		hapiRequestLogs: request.getLog(),
+        hapiRequestLogs: hapiRequestLogs,
 		appState: request.app,
 		domain: request.domain,
 		headers: request.headers,
@@ -169,7 +185,7 @@ export function requestToJson(request: hapi.Request) {
 		params: request.params,
 		paramsArray: request.paramsArray,
 		path: request.path,
-		payload: __.JSONX.inspectJSONify(request.payload),
+		payload:  __.JSONX.inspectJSONify(request.payload),
 		query: request.query,
 		url: request.url,
 		responseStatusCode:request.response==null?null:request.response.statusCode,
@@ -190,7 +206,7 @@ export function ezRouteConfigNoAuth<TPayloadOut>(path: string,
 	method = ["POST"],
 	/** default = { payload: { output: "data", parse: "gunzip" },auth: false } */
 	config: hapi.IRouteAdditionalConfigurationOptions = {
-		payload: { output: "data", parse: "gunzip" },
+        payload: { output: "data", parse: "gunzip" },//data+gunzip = a decompressed buffer for request.payload
 		auth: false, //don't require login
 	},
 	/** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
@@ -203,6 +219,9 @@ export function ezRouteConfigNoAuth<TPayloadOut>(path: string,
 		path,
 		config,
 		handler: (request, reply) => {
+
+
+            log.debug("ezRouteConfigNoAuth got request", { path, request: requestToJson(request) });
 
 			if (request.method === "head" && doHandlerOnHeadRequests === false) {
 				reply("");

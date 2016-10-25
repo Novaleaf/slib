@@ -43,7 +43,7 @@ function initialize(server, _options) {
         };
     }
     //configure for http
-    server.connection({ port: options.httpPort, routes: { log: true } });
+    server.connection({ port: options.httpPort });
     //configure for https
     if (_tlsKeys != null) {
         var httpsConnectionOptions = {
@@ -81,7 +81,7 @@ function initialize(server, _options) {
     //setup error listening
     server.on('request-error', function (request, err) {
         //console.log(err.data.stack);		
-        log.error("nlib.hapi-eco.connection.server.on.request-error", { request: hapiEco.requestToJson(request, { verboseRequestLogs: true }) }, err);
+        log.error("nlib.hapi-eco.connection.server.on.request-error", { request: hapiEco.requestToJson(request) }, err);
         //console.log('Error response (500) sent for request: ' + request.id + ' because: ' + (err.trace || err.stack || err));
     });
     //server.route([

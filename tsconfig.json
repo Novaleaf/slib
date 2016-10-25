@@ -19,7 +19,7 @@
     "forceConsistentCasingInFileNames": true,
 
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDirs": [ "./src" ],
 
     "noImplicitReturns": true,
     "noImplicitAny": true,
@@ -27,6 +27,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "strictNullChecks": true,
+    "types": [],
     "typeRoots": []
     
   },

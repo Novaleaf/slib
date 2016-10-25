@@ -87,7 +87,6 @@ function ezRouteConfigAuthRequired(path,
         path: path,
         config: config,
         handler: function (request, reply) {
-            log.debug("ezRouteConfigAuthRequired got request", { path: path, request: requestToJson(request) });
             if (request.method === "head" && doHandlerOnHeadRequests === false) {
                 reply("");
                 return;
@@ -135,25 +134,12 @@ exports.ezRouteConfigAuthRequired = ezRouteConfigAuthRequired;
  * construct a POJO object from the request, suitable for logging
  * @param request
  */
-function requestToJson(request, options) {
-    if (options === void 0) { options = {}; }
-    var hapiRequestLogs;
-    try {
-        if (options.verboseRequestLogs === true) {
-            hapiRequestLogs = request.getLog();
-        }
-        else {
-            hapiRequestLogs = ["verbose logs disabled in requestToJson(options)"];
-        }
-    }
-    catch (ex) {
-        hapiRequestLogs = ["unable to get hapi request logs.  you must set server.connection({ routes: { log: true }as any }); to enable them."];
-    }
+function requestToJson(request) {
     return {
         auth: request.auth,
         connectionInfo: request.connection.info,
         method: request.method,
-        hapiRequestLogs: hapiRequestLogs,
+        hapiRequestLogs: request.getLog(),
         appState: request.app,
         domain: request.domain,
         headers: request.headers,
@@ -197,7 +183,6 @@ function ezRouteConfigNoAuth(path,
         path: path,
         config: config,
         handler: function (request, reply) {
-            log.debug("ezRouteConfigNoAuth got request", { path: path, request: requestToJson(request) });
             if (request.method === "head" && doHandlerOnHeadRequests === false) {
                 reply("");
                 return;

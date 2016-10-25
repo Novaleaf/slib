@@ -85,7 +85,7 @@ export function initialize(server: Hapi.Server, _options?: {
     }
 
     //configure for http
-    server.connection({ port: options.httpPort });
+    server.connection({ port: options.httpPort, routes: { log: true }as any });
 
     //configure for https
     if (_tlsKeys != null) {
@@ -142,7 +142,8 @@ export function initialize(server: Hapi.Server, _options?: {
 	//setup error listening
 	server.on('request-error', function (request: Hapi.Request, err:Error) {
 		//console.log(err.data.stack);		
-		log.error("nlib.hapi-eco.connection.server.on.request-error", { request: hapiEco.requestToJson(request) }, err);
+        
+        log.error("nlib.hapi-eco.connection.server.on.request-error", { request: hapiEco.requestToJson(request, {verboseRequestLogs:true}) }, err);
 		//console.log('Error response (500) sent for request: ' + request.id + ' because: ' + (err.trace || err.stack || err));
 	});
 	//server.route([

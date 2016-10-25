@@ -54,9 +54,7 @@ export declare function ezRouteConfigAuthRequired<TPayloadOut, TJwtAuthPayload>(
  * construct a POJO object from the request, suitable for logging
  * @param request
  */
-export declare function requestToJson(request: hapi.Request, options?: {
-    verboseRequestLogs?: boolean;
-}): {
+export declare function requestToJson(request: hapi.Request): {
     auth: {
         isAuthenticated: boolean;
         credentials: any;
