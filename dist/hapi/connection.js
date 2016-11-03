@@ -1,12 +1,12 @@
 //import refs = require("../refs");
 "use strict";
-var file = require("../file");
-var xlib = require("xlib");
+const file = require("../file");
+const xlib = require("xlib");
 var Promise = xlib.promise.bluebird;
 var log = new xlib.logging.Logger(__filename);
-var Url = require("url");
+const Url = require("url");
 var __ = xlib.lolo;
-var hapiEco = require("./hapi-eco");
+const hapiEco = require("./hapi-eco");
 /////////////////////////////// HTTPS
 //var _tlsOptions: { key: Buffer; cert: Buffer };
 //if (__devSettings.isDevMode === true) {
@@ -25,7 +25,7 @@ var hapiEco = require("./hapi-eco");
  * @param options
  */
 function initialize(server, _options) {
-    var options;
+    let options;
     if (_options == null) {
         options = {};
     }
@@ -35,7 +35,7 @@ function initialize(server, _options) {
     options.isHttpsOnly = __.defaultIfNull(options.isHttpsOnly, false);
     options.httpPort = __.defaultIfNull(options.httpPort, 80);
     options.httpsPort = __.defaultIfNull(options.httpsPort, 443);
-    var _tlsKeys = null;
+    let _tlsKeys = null;
     if (options.tls != null) {
         _tlsKeys = {
             key: file.fsPromise.readFileSync(options.tls.keyPath),
@@ -46,7 +46,7 @@ function initialize(server, _options) {
     server.connection({ port: options.httpPort, routes: { log: true } });
     //configure for https
     if (_tlsKeys != null) {
-        var httpsConnectionOptions = {
+        let httpsConnectionOptions = {
             port: options.httpsPort,
             tls: _tlsKeys,
         };
@@ -54,7 +54,7 @@ function initialize(server, _options) {
     }
     //redirect http requests if option is set.
     if (options.isHttpsOnly) {
-        server.ext("onRequest", function (request, reply) {
+        server.ext("onRequest", (request, reply) => {
             //log.info("info", request.info);
             //log.info("connection", request.connection);
             if (request.connection.info.port != options.httpsPort && request.path.indexOf("/metrics/") < 0) {
@@ -70,7 +70,7 @@ function initialize(server, _options) {
         });
     }
     if (options.disableSimpleHealthCheckEndpoint !== true) {
-        var routeConfig = hapiEco.ezRouteConfigNoAuth("/metrics/simpleHealthCheck", function (request, reply) {
+        let routeConfig = hapiEco.ezRouteConfigNoAuth("/metrics/simpleHealthCheck", (request, reply) => {
             return Promise.resolve("OK");
         }, ["GET", "POST"], {
             //payload: { output: "data", parse: "gunzip" },

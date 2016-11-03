@@ -1,5 +1,5 @@
 "use strict";
-var fsPromise = require("fs-extra-promise");
+const fsPromise = require("fs-extra-promise");
 exports.fsPromise = fsPromise;
 /** promisified version of fs and fs-extra.   https://www.npmjs.com/package/fs-extra-promise */
 //import * as xlib from "xlib";

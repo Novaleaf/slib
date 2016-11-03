@@ -1,5 +1,5 @@
 "use strict";
-var xlib = require("xlib");
+const xlib = require("xlib");
 var log = new xlib.logging.Logger(__filename);
 //import Url = require("url");
 /** the main hapi library.  >=12.x  */
@@ -31,17 +31,14 @@ exports.connection = require("./connection");
  *
  * @param request
  */
-function extractClientIpBareOrGCloudHttpLoadBalancer(request, forwardingSteps, proxyIfRemoteAddressStartsWith, ipIfInvalid) {
-    if (forwardingSteps === void 0) { forwardingSteps = 2; }
-    if (proxyIfRemoteAddressStartsWith === void 0) { proxyIfRemoteAddressStartsWith = "130.211"; }
-    if (ipIfInvalid === void 0) { ipIfInvalid = "0.0.0.0"; }
+function extractClientIpBareOrGCloudHttpLoadBalancer(request, forwardingSteps = 2, proxyIfRemoteAddressStartsWith = "130.211", ipIfInvalid = "0.0.0.0") {
     if (request.info.remoteAddress.indexOf(proxyIfRemoteAddressStartsWith) === 0) {
         try {
-            var xFF = request.headers['x-forwarded-for'];
+            let xFF = request.headers['x-forwarded-for'];
             if (xFF != null) {
-                var xFFSplit = xFF.split(',');
-                var targetHop = xFFSplit.length - forwardingSteps;
-                var ip = xFFSplit[targetHop];
+                let xFFSplit = xFF.split(',');
+                let targetHop = xFFSplit.length - forwardingSteps;
+                let ip = xFFSplit[targetHop];
                 return ip;
             }
             return request.info.remoteAddress;
@@ -72,29 +69,26 @@ function ezRouteConfigAuthRequired(path,
     /** you should send successful results via .reply().   failures are automatically handled when you return a rejected promise */
     handlerPromise, 
     /** default = ["POST"]*/
-    method, 
+    method = ["POST"], 
     /** default = { payload: { output: "data", parse: "gunzip" } } */
-    config, 
-    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
-    doHandlerOnHeadRequests) {
-    if (method === void 0) { method = ["POST"]; }
-    if (config === void 0) { config = {
+    config = {
         payload: { output: "data", parse: "gunzip" }
-    }; }
-    if (doHandlerOnHeadRequests === void 0) { doHandlerOnHeadRequests = false; }
-    var toReturn = {
-        method: method,
-        path: path,
-        config: config,
-        handler: function (request, reply) {
-            log.debug("ezRouteConfigAuthRequired got request", { path: path, request: requestToJson(request) });
+    }, 
+    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
+    doHandlerOnHeadRequests = false) {
+    let toReturn = {
+        method,
+        path,
+        config,
+        handler: (request, reply) => {
+            log.debug("ezRouteConfigAuthRequired got request", { path, request: requestToJson(request) });
             if (request.method === "head" && doHandlerOnHeadRequests === false) {
                 reply("");
                 return;
             }
-            var credentials = request.auth.credentials;
+            let credentials = request.auth.credentials;
             handlerPromise(request, reply, credentials)
-                .then(function (promisePayload) {
+                .then((promisePayload) => {
                 //success
                 if (reply._replied == null) {
                     throw log.error("the IReply._replied property is/was an undocumented feature of Hapi 8.x, which informs the state of the reply.   it is now missing!??  figure out a replacement");
@@ -105,11 +99,11 @@ function ezRouteConfigAuthRequired(path,
                         reply("");
                     }
                     else {
-                        var response = reply(promisePayload);
+                        let response = reply(promisePayload);
                     }
                 }
-            }, function (errExecutingHandler) {
-                var replyBody = {
+            }, (errExecutingHandler) => {
+                let replyBody = {
                     message: "Error invoking endpoint path=" + request.url.path,
                     statusCode: 500,
                 };
@@ -122,7 +116,7 @@ function ezRouteConfigAuthRequired(path,
                 log.warn(replyBody, errExecutingHandler);
                 var response = reply(replyBody).code(replyBody.statusCode);
             })
-                .catch(function (err) {
+                .catch((err) => {
                 console.log("ERROR in hapi eco", err.toString());
             });
         },
@@ -135,9 +129,8 @@ exports.ezRouteConfigAuthRequired = ezRouteConfigAuthRequired;
  * construct a POJO object from the request, suitable for logging
  * @param request
  */
-function requestToJson(request, options) {
-    if (options === void 0) { options = {}; }
-    var hapiRequestLogs;
+function requestToJson(request, options = {}) {
+    let hapiRequestLogs;
     try {
         if (options.verboseRequestLogs === true) {
             hapiRequestLogs = request.getLog();
@@ -181,29 +174,26 @@ function ezRouteConfigNoAuth(path,
     /** you should send successful results via .reply().   failures are automatically handled when you return a rejected promise */
     handlerPromise, 
     /** default = ["POST"]*/
-    method, 
+    method = ["POST"], 
     /** default = { payload: { output: "data", parse: "gunzip" },auth: false } */
-    config, 
-    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
-    doHandlerOnHeadRequests) {
-    if (method === void 0) { method = ["POST"]; }
-    if (config === void 0) { config = {
+    config = {
         payload: { output: "data", parse: "gunzip" },
         auth: false,
-    }; }
-    if (doHandlerOnHeadRequests === void 0) { doHandlerOnHeadRequests = false; }
-    var toReturn = {
-        method: method,
-        path: path,
-        config: config,
-        handler: function (request, reply) {
-            log.debug("ezRouteConfigNoAuth got request", { path: path, request: requestToJson(request) });
+    }, 
+    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
+    doHandlerOnHeadRequests = false) {
+    let toReturn = {
+        method,
+        path,
+        config,
+        handler: (request, reply) => {
+            log.debug("ezRouteConfigNoAuth got request", { path, request: requestToJson(request) });
             if (request.method === "head" && doHandlerOnHeadRequests === false) {
                 reply("");
                 return;
             }
             handlerPromise(request, reply)
-                .then(function (promisePayload) {
+                .then((promisePayload) => {
                 //success
                 if (reply._replied !== true) {
                     //response not yet set
@@ -211,11 +201,11 @@ function ezRouteConfigNoAuth(path,
                         reply("");
                     }
                     else {
-                        var response = reply(promisePayload);
+                        let response = reply(promisePayload);
                     }
                 }
-            }, function (errExecutingHandler) {
-                var replyBody = {
+            }, (errExecutingHandler) => {
+                let replyBody = {
                     message: "ENDPOINT ERROR:" + request.url.path,
                     statusCode: 500,
                 };

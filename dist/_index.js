@@ -1,5 +1,5 @@
 "use strict";
-var xlib = require("xlib");
+const xlib = require("xlib");
 exports.xlib = xlib;
 /** cross platform base library.  npm xlib to use by itself */
 ////////////////////////////////////////////////////
@@ -23,7 +23,7 @@ exports.commander = require("commander");
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 //slib custom modules
-var file = require("./file");
+const file = require("./file");
 exports.file = file;
 //export import processManager = require("./processmanager");
 /** web server needs */
@@ -85,8 +85,7 @@ exports.getNetworkIPs = (function () {
             filter6RE = /\binet6[^:]+:\s*([^\s]+)/g; // IPv6
             break;
     }
-    return function (bypassCache) {
-        if (bypassCache === void 0) { bypassCache = false; }
+    return function (bypassCache = false) {
         if (cachedV4 == null || bypassCache === true) {
             var stdoutBuffer = exports.childProcess.execSync(command);
             cachedV4 = [];
