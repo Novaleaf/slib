@@ -1,4 +1,5 @@
 /// <reference types="node" />
+/// <reference types="bluebird" />
 import xlib = require("xlib");
 import Promise = xlib.promise.bluebird;
 export interface IModuleImport {
@@ -54,7 +55,7 @@ datastore#NO_MORE_RESULTS: There are no more results.*/
             /** How many IDs to generate. */ n: number, callback: (err: any, keys: IKey[], 
             /** The full API response. */ apiResponse: ICallbackApiResponse) => void): void;
         /** Create a query from the current dataset to query the specified kind, scoped to the namespace provided at the initialization of the dataset. */
-        createQuery(namespace: string, kind: string): IQuery;
+        createQuery(namespace: string | undefined, kind: string): IQuery;
         createQuery(kind: string): IQuery;
         /** Delete all entities identified with the specified key(s). */
         delete(key: IKey | IKey[], callback: (err: any, apiResponse: ICallbackApiResponse) => void): void;
@@ -289,11 +290,11 @@ export declare module datastore {
     class _EzConnectionBase<TConnection extends ICoreConnection> {
         connection: TConnection;
         /** for use when the dataset is explicitly  needed (constructing keys, etc) */
-        assistantDataset: IDatastore_v040;
+        assistantDatastore: IDatastore_v040;
         isTransaction: boolean;
         constructor(connection: TConnection, 
             /** for use when the dataset is explicitly  needed (constructing keys, etc) */
-            assistantDataset: IDatastore_v040);
+            assistantDatastore: IDatastore_v040);
         allocateIds(/** The key object to complete. */ incompleteKey: IKey, n: number): Promise<{
             keys: IKey[];
             apiResponse: any;
@@ -301,7 +302,7 @@ export declare module datastore {
         delete(key: IKey | IKey[]): Promise<{
             apiResponse: any;
         }>;
-        deleteEz(incompletePath: string[], key: string | number): Promise<{
+        deleteEz(kind: string, idOrName: string | number, namespace?: string): Promise<{
             apiResponse: any;
         }>;
         get<TEntityData>(key: IKey): Promise<{
@@ -312,19 +313,19 @@ export declare module datastore {
             entity: IEntity<TEntityData>[];
             apiResponse: any;
         }>;
-        getEz<TEntityData>(incompletePath: string[], key: string | number): Promise<{
+        getEz<TEntityData>(kind: string, idOrName: string | number, namespace?: string): Promise<{
             entity: IEntity<TEntityData>;
             apiResponse: any;
         }>;
-        insertEz<TEntityData>(incompletePath: string[], key: string | number, data: TEntityData): Promise<{
+        insertEz<TEntityData>(kind: string, idOrName: string | number, data: TEntityData, namespace?: string): Promise<{
             entity: IEntity<TEntityData>;
             apiResponse: any;
         }>;
-        updateEz<TEntityData>(incompletePath: string[], key: string | number, data: TEntityData): Promise<{
+        updateEz<TEntityData>(kind: string, idOrName: string | number, data: TEntityData, namespace?: string): Promise<{
             entity: IEntity<TEntityData>;
             apiResponse: any;
         }>;
-        upsertEz<TEntityData>(incompletePath: string[], key: string | number, data: TEntityData): Promise<{
+        upsertEz<TEntityData>(kind: string, idOrName: string | number, data: TEntityData, namespace?: string): Promise<{
             entity: IEntity<TEntityData>;
             apiResponse: any;
         }>;
@@ -350,12 +351,27 @@ export declare module datastore {
         ezEntity: TEzEntity;
         apiResponse: any;
     }
-    class EzEntity<TId extends string | number, TData> {
-        _ezDataset: EzDataset;
-        incompletePath: string[];
+    /** an base class for helping to create an ORM*/
+    class EzEntity<TId extends string | (number), TData> {
+        _ezDataset: EzDatastore;
+        options: {
+            /** for multitenancy, can be undefined to use the default namespace */
+            namespace?: string;
+            kind: string;
+            excludeFromIndexes?: TData;
+        };
+        /** can be undefined if using a numeric ID, in that case the ID will be auto-assigned on the server.  this is updated whenever we read from the datastore server */
         idOrName: TId;
-        _excludeFromIndexes: TData;
-        constructor(_ezDataset: EzDataset, incompletePath: string[], idOrName: TId, _excludeFromIndexes?: TData, /** if passed, we will clone this and populate the .data value with it*/ initialData?: TData);
+        constructor(_ezDataset: EzDatastore, options: {
+            /** for multitenancy, can be undefined to use the default namespace */
+            namespace?: string;
+            kind: string;
+            excludeFromIndexes?: TData;
+        }, 
+            /** can be undefined if using a numeric ID, in that case the ID will be auto-assigned on the server.  this is updated whenever we read from the datastore server */
+            idOrName: TId, 
+            /** if passed, we will clone this and populate the .data value with it*/
+            initialData?: TData);
         /** the latest version of the data we read from the datastore (may not be up to date, be aware!)
         OR the latest version we wrote (whichever is most recent)
 
@@ -407,7 +423,7 @@ export declare module datastore {
          */
         _processEntityFromServer(entity: IEntity<TData> | null): void;
     }
-    class EzDataset extends _EzConnectionBase<IDatastore_v040> {
+    class EzDatastore extends _EzConnectionBase<IDatastore_v040> {
         constructor(dataset: IDatastore_v040);
         /**
          * DEPRECATED: while functional, the workflow is wonky.   favor the promise based ".runInTransaction()" instead.
@@ -423,7 +439,7 @@ export declare module datastore {
          * @param userFunction
          * @param retryOptions
          */
-        runInTransaction_NEWPROMISE<TResult>(
+        runInTransaction<TResult>(
             /** return a promise that resolves to commit the transaction.   return a rejected to rollback.
             IMPORTANT NOTE: be aware that inside transactions (using the transaction.write() functions), write operations resolve instantly as they are not actually applied until the done() callback method is called.
              */
