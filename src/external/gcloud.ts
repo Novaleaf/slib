@@ -36,10 +36,13 @@ export module datastore {
 	/** the raw entity returned by the datastore api */
 	export interface IDbEntity<TData> {
 		key: IKey,
-		///** Optional method to explicity use for save. The choices include 'insert', 'update', 'upsert' and 'insert_auto_id'. */
-		method?: string,
-		/** Data to save with the provided key. If you provide an array of objects, you must use the explicit syntax: name for the name of the property and value for its value. You may also specify an excludeFromIndexes property, set to true or false. */
-		data: TData,// | IEntityInstrumentedData[],
+		/////** Optional method to explicity use for save. The choices include 'insert', 'update', 'upsert' and 'insert_auto_id'. */
+		//method?: string,
+		/** Data to save with the provided key. If you provide an array of objects, you must use the explicit syntax: name for the name of the property and value for its value. You may also specify an excludeFromIndexes property, set to true or false.
+		if using via EzOrm, this will be set to undefined for write calls (as no dbEntity is actually read from the db, so don't confuse you)
+		also will be undefined if reading a non-existing value
+		 */
+		data: TData | undefined,// | IEntityInstrumentedData[],
 	}
 	///** advanced features of IEntity, not sure how to use yet */
 	//export interface IEntityAdvanced<TData> extends IEntity<TData> {
@@ -112,10 +115,10 @@ datastore#NO_MORE_RESULTS: There are no more results.*/
 
 
 		/** Retrieve the entities identified with the specified key(s) in the current transaction. Get operations require a valid key to retrieve the key-identified entity from Datastore. */
-		get<TEntityData>(key: IKey, callback: (err: any, entity: IDbEntity<TEntityData>, apiResponse?: ICallbackApiResponse) => void): void;
-		get<TEntityData>(keys: IKey[], callback: (err: any, entities: IDbEntity<TEntityData>[], apiResponse?: ICallbackApiResponse) => void): void;
-		get<TEntityData>(key: IKey, options: ICoreApiOptions, callback: (err: any, entity: IDbEntity<TEntityData>, apiResponse?: ICallbackApiResponse) => void): void;
-		get<TEntityData>(keys: IKey[], options: ICoreApiOptions, callback: (err: any, entities: IDbEntity<TEntityData>[], apiResponse?: ICallbackApiResponse) => void): void;
+		get<TEntityData>(key: IKey, callback: (err: any, data: TEntityData, apiResponse?: ICallbackApiResponse) => void): void;
+		get<TEntityData>(keys: IKey[], callback: (err: any, datas: TEntityData[], apiResponse?: ICallbackApiResponse) => void): void;
+		get<TEntityData>(key: IKey, options: ICoreApiOptions, callback: (err: any, data: TEntityData, apiResponse?: ICallbackApiResponse) => void): void;
+		get<TEntityData>(keys: IKey[], options: ICoreApiOptions, callback: (err: any, datas: TEntityData[], apiResponse?: ICallbackApiResponse) => void): void;
 		get<TEntityData>(key: IKey, options?: ICoreApiOptions): IStream<IDbEntity<TEntityData>>;
 
 
@@ -523,21 +526,53 @@ export module datastore {
 		}
 
 
-		public get<TEntityData>(key: IKey): Promise<{ entity: IDbEntity<TEntityData>, apiResponse: any }>;
-		public get<TEntityData>(keys: IKey[]): Promise<{ entity: IDbEntity<TEntityData>[], apiResponse: any }>;
-		get(keyOrKeys: any) {
+		public get<TEntityData>(key: IKey): Promise<{ readResult: IDbEntity<TEntityData>, apiResponse: any }>;
+		public get<TEntityData>(keys: IKey[]): Promise<{ readResult: IDbEntity<TEntityData>[], apiResponse: any }>;
+		public get<TEntityData>(keyOrKeys: IKey | IKey[]): Promise<{ readResult: IDbEntity<TEntityData> | IDbEntity<TEntityData>[], apiResponse: any }> {
 			logGCloud.trace(`_EzConnectionBase.get`, { arguments });
+
 			return <any>new Promise((resolve, reject) => {
 
-				this._connection.get(keyOrKeys,
-					//	{ consistency: "strong" },
-					(err, entityOrEntities, apiResponse) => {
-						if (err != null) {
-							//err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
-							err.apiResponse = apiResponse; return reject(err);
-						}
-						return resolve({ entity: entityOrEntities, apiResponse });
-					});
+				if (_.isArray(keyOrKeys) === true) {
+					//handle case an array of keys is passed
+					const keys = keyOrKeys as IKey[];
+					this._connection.get<TEntityData>(keys,
+						(err, datas, apiResponse) => {
+							if (err != null) {
+								//err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
+								err.apiResponse = apiResponse; return reject(err);
+							}
+							let entities: IDbEntity<TEntityData>[] = [];
+							__.forEach(keys, (key, index) => {
+								let entity: IDbEntity<TEntityData> = {
+									key,
+									data: datas[index],
+								};
+								entities.push(entity);
+							});
+							let toReturn = { readResult: entities, apiResponse };
+							return resolve(toReturn);
+						});
+				} else {
+					//handle case a single key is passed
+					const key = keyOrKeys as IKey;
+					this._connection.get<TEntityData>(key,
+						(err, data, apiResponse) => {
+							if (err != null) {
+								//err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
+								err.apiResponse = apiResponse; return reject(err);
+							}
+
+
+							let entity: IDbEntity<TEntityData> = {
+								key,
+								data,
+							};
+
+							let toReturn = { readResult: entity, apiResponse };
+							return resolve(toReturn);
+						});
+				}
 			});
 		}
 
@@ -548,8 +583,10 @@ export module datastore {
 			}
 			let keyObj = this.assistantDatastore.key({ path, namespace });
 
-			var toReturn = this.get<TEntityData>(keyObj);
-			return toReturn;
+			return this.get<TEntityData>(keyObj)
+				.then((readResult) => {
+					return Promise.resolve({ entity: readResult.readResult, apiResponse: readResult.apiResponse });
+				});
 		}
 
 		public insertEz<TEntityData>(kind: string, idOrName: string | number | undefined, data: TEntityData, namespace?: string): Promise<{ entity: IDbEntity<TEntityData>, apiResponse: any }> {
@@ -712,7 +749,7 @@ export module datastore {
 			if (options.namespace === null) {
 				options.namespace = undefined;
 			}
-			
+
 			log.errorAndThrowIfFalse(options.kind != null && options.kind != "", "kind is null");
 			//log.assert( incompletePath.length % 2 === 1, "incomplete path should be an odd number of elements, otherwise it's not incomplete" );
 			if (initialData != null) {
@@ -1189,81 +1226,12 @@ export module datastore {
 	};
 
 
+	import _ds = xlib.designPatterns.dataSchema;
 
 	/**
-	 *  scratch for unifying database and ui  schemas
+	 *  orm helper for use with the xlib.designPatterns.dataSchema pattern.
 	 */
 	export module dataSchema {
-
-		/** for all supported db types, see: https://cloud.google.com/datastore/docs/concepts/entities#properties_and_value_types		
-		*/
-		export type DbType = "string" | "double" | "integer" | "boolean" | "date" | "blob" | "none";
-
-
-		export interface IPropertySchema<TValue> {
-
-			//value?: TValue; //move runtime values to a seperate "entity" type
-			default?: TValue;
-			/** if input (and store) of this field is optional.  if so, then will store NULL on the database for this property if it is not set. */
-			isOptional?: boolean;
-			/** if this field is hidden from user input (set on the server side).  note that if both .isOptional and .isHidden are true, it means the property is required to be set on the server before writing to the db. */
-			isHidden?: boolean;
-			/** how this should be stored in the database.   use "none" to not store the field in the db */
-			dbType: DbType;
-			/** by default all properties are indexed (add +1x the entity size for each indexed field!  expensive!)  so you can disable this for properties that you know are not going to be sorted by, if a large number of entities of that kind need to be stored. */
-			isDbIndexExcluded?: boolean;
-
-			/** can set an optional input format, used when using the react-jsonschema-form react plugin.   used as it's "type" field. */
-			inputType?: string;
-		}
-
-
-		export interface IStringProperty extends IPropertySchema<string> {
-			inputType?: "textarea" | "password" | "color" | "text";
-			inputFormat?: "email" | "uri" | "data-url" | "date" | "date-time";
-			dbType: "string" | "none";
-			/** if true, keeps empty strings, otherwise converts to null */
-			allowEmpty?: boolean;
-		}
-		export interface IDateProperty extends IPropertySchema<Date> {
-			inputType?: "text";
-			inputFormat: "date" | "date-time";
-			dbType: "date" | "none";
-		}
-
-		export interface INumberProperty extends IPropertySchema<number> {
-			dbType: "double" | "integer" | "none";
-			inputType?: "updown" | "range" | "text";
-			minimum?: number;
-			maximum?: number;
-			multipleOf?: number;
-		}
-
-		export interface IDoubleProperty extends INumberProperty {
-			dbType: "double" | "none";
-		}
-		export interface IIntegerProperty extends INumberProperty {
-			dbType: "integer" | "none";
-		}
-
-		export interface ISchema { //<TData, TEntity extends IEntity<TData>> {
-
-			properties: {
-				[propertyName: string]: IPropertySchema<any>;
-			}
-
-			db: {
-				kind: string;
-				/** default false.   if true, will not raise errors on invalid schema from the database reads/writes */
-				suppressInvalidSchemaErrors?: boolean;
-				/** default false.   if true, will raise an error if the namespace is not specified */
-				isNamespaceRequired?: boolean;
-			}
-
-			//entityTemplate: TEntity
-
-		}
-
 
 
 
@@ -1275,7 +1243,7 @@ export module datastore {
 
 			/** data conforming to the schema.  includes code-runtime-specific props, and also props that are stored in the database (using custom "mixin" logic).
 			thus even if the dbEntity doesn't exist, this will NOT be undefined.  (check ```this.dbResult.exists``` to determine existance) */
-			schemaData: TData;
+			data: TData;
 
 			dbResult?: {
 				dbEntity?: IDbEntity<TData>
@@ -1290,61 +1258,6 @@ export module datastore {
 			}
 		}
 
-		export interface ICustomerData {
-			name: string;
-			address: string;
-			city: string;
-			state: string;
-			zip: string;
-			notes?: string;
-		}
-
-
-		export interface ICustomerEntity extends IEntity<ICustomerData> {
-
-		}
-
-		export const CustomerSchema: ISchema = {
-			properties: {
-				name: {
-					dbType: "string",
-				} as IStringProperty,
-
-				address: {
-					dbType: "string",
-				} as IStringProperty,
-				city: {
-					dbType: "string",
-				} as IStringProperty,
-				state: {
-					dbType: "string",
-				} as IStringProperty,
-				zip: {
-					dbType: "string",
-				} as IStringProperty,
-				notes: {
-					dbType: "string",
-					isOptional: true,
-					isDbIndexExcluded: true,
-				} as IStringProperty,
-				createDate: {
-					dbType: "date",
-					inputFormat: "date-time",
-					isOptional: true,
-					isHidden: true,
-				} as IDateProperty,
-				/** the date+time of the last ui input */
-				lastUpdateDate: {
-					dbType: "date",
-					inputFormat: "date-time",
-					isOptional: true,
-					isHidden: true,
-				} as IDateProperty,
-			},
-			db: {
-				kind: "Customer",
-			},
-		};
 
 
 
@@ -1358,19 +1271,37 @@ export module datastore {
 			constructor(public _ezDatastore: EzDatastore) { }
 
 
-
 			/**
-			 *  updates the entity with values from the db.   schema validation is also performed.
-			 * @param schemaEntity
-			 * @param dbResponse
+			 *  helper to construct a new entity of the type requested
+			 * @param schema
+			 * @param namespace
 			 */
-			private _processDbResponse(schema: ISchema, dbResponse: { entity: IDbEntity<any>, apiResponse: any }, entity: IEntity<any>) {
+			public ezConstructEntity<TData>(schema: _ds.ISchema, namespace?: string, id?: number): IEntity<TData> {
+
+				//convert a data object of the proper type
+				let schemaData: TData = {} as any;
+				__.forEach(schema.properties, (prop, key) => {
+					(schemaData as any)[key] = prop.default;
+				});
 
 
+				//construct the entity to return
+				let toReturn: IEntity<TData> = {
+					dbResult: undefined,
+					id: id,
+					kind: schema.db.kind,
+					namespace: namespace,
+					data: schemaData,
+				};
 
+				return toReturn;
 
-				log.errorAndThrowIfFalse(entity.id != null && entity.id !== dbResponse.entity.key.id, "id already exists, why does it change?");
-				log.errorAndThrowIfFalse(schema.db.kind == null || schema.db.kind !== dbResponse.entity.key.kind, "why is kind different?");
+			}
+
+			private _processDbResponse_KeyHelper(schema: _ds.ISchema, dbResponse: { entity: IDbEntity<any>, apiResponse: any }, entity: IEntity<any>) {
+				log.errorAndThrowIfFalse(entity != null && dbResponse.entity != null && dbResponse.entity.key != null, "required obj is missing.  (entity or dbResponse.entity.key)", { entity, dbResponse });
+				log.errorAndThrowIfFalse(entity.id == null || entity.id === dbResponse.entity.key.id, "id already exists, why does it change?", { entity, dbResponse });
+				log.errorAndThrowIfFalse(schema.db.kind === dbResponse.entity.key.kind, "why is kind different?", { schema, dbResponse });
 
 				//update our fixed values from the db
 				entity.id = dbResponse.entity.key.id;
@@ -1380,69 +1311,104 @@ export module datastore {
 					lastApiResponse: dbResponse.apiResponse,
 					exists: dbResponse.entity.data != null,
 				};
-				if (entity.schemaData == null) {
-					entity.schemaData = {};
+			}
+
+			/**
+			 * updates the entity with only the key data from the db.  schema validation is also performed.
+			 * when writing the db values are not read back.  these are in IEntityInstrumentedData[] format as they are just echos of the input values
+			 * @param schema
+			 * @param dbResponse
+			 * @param entity
+			 */
+			private _processDbResponse_Write(schema: _ds.ISchema, dbResponse: { entity: IDbEntity<any>, apiResponse: any }, entity: IEntity<any>) {
+
+				this._processDbResponse_KeyHelper(schema, dbResponse, entity);
+
+			}
+			/**
+			 *  updates the entity with values from the db.   schema validation is also performed.
+			 * if entity does not exist, does not delete props
+			 * @param schemaEntity
+			 * @param dbResponse
+			 */
+			private _processDbResponse_Read(schema: _ds.ISchema, dbResponse: { entity: IDbEntity<any>, apiResponse: any }, entity: IEntity<any>) {
+
+
+				this._processDbResponse_KeyHelper(schema, dbResponse, entity);
+
+
+				if (entity.data == null) {
+					entity.data = {};
 				}
 
 				const dbData = dbResponse.entity.data;
 
-				//loop through all schemaProps and if the prop is a dbType, mix it into our entity data
-				__.forEach(schema.properties, (prop, key) => {
-					if (prop.dbType === "none") {
-						//not in the db, so don't update our entity's data value for this prop
-						return;
-					}
 
 
+				if (dbData != null) {
+					//exists
 
-					const dbValue = dbData[key];
 
-
-
-					if (dbValue == null) {
-						//set our returning value to null
-						entity.schemaData[key] = null;
-						//prop missing in db (undefined) or null
-						if (prop.isOptional !== true && schema.db.suppressInvalidSchemaErrors !== true) {
-							throw log.error("missing prop in dbEntity", { prop, key, dbData });
+					//loop through all schemaProps and if the prop is a dbType, mix it into our entity data
+					__.forEach(schema.properties, (prop, key) => {
+						if (prop.dbType === "none") {
+							//not in the db, so don't update our entity's data value for this prop
+							return;
 						}
-					} else {
-						//prop found in db, mixin the value
-						entity.schemaData[key] = dbValue;
 
-						if (schema.db.suppressInvalidSchemaErrors !== true) {
-							//compare dbType to what the schema says it should be
-							const dbType = xlib.reflection.getType(dbValue);
-							switch (schema.properties[key].dbType) {
-								case "string":
-									log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.string);
-									break;
-								case "double":
-									log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
-									break;
-								case "integer":
-									log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
-									break;
-								case "boolean":
-									log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.boolean);
-									break;
-								case "blob":
-									log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.object);
-									break;
-								case "date":
-									log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.Date);
-									break;
-								case "none":
-									throw log.error("dbtype set to none, should not exist in db");
-								default:
-									throw log.error("unknown dbtype, need to add handling of this in the ._processDbResponse() worker fcn", { key, prop });
 
+
+						const dbValue = dbData[key];
+
+
+
+						if (dbValue == null) {
+							//set our returning value to null
+							entity.data[key] = null;
+							//prop missing in db (undefined) or null
+							if (prop.isOptional !== true && schema.db.suppressInvalidSchemaErrors !== true) {
+								throw log.error("missing prop in dbEntity", { key, schema, entity, dbResponse, isSameRef: entity.data === dbResponse.entity.data });
 							}
+						} else {
+							//prop found in db, mixin the value
+							entity.data[key] = dbValue;
+
+							if (schema.db.suppressInvalidSchemaErrors !== true) {
+								//compare dbType to what the schema says it should be
+								const dbType = xlib.reflection.getType(dbValue);
+								switch (schema.properties[key].dbType) {
+									case "string":
+										log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.string);
+										break;
+									case "double":
+										log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
+										break;
+									case "integer":
+										log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
+										break;
+									case "boolean":
+										log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.boolean);
+										break;
+									case "blob":
+										log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.object);
+										break;
+									case "date":
+										log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.Date);
+										break;
+									case "none":
+										throw log.error("dbtype set to none, should not exist in db");
+									default:
+										throw log.error("unknown dbtype, need to add handling of this in the ._processDbResponse() worker fcn", { key, prop });
+
+								}
+							}
+
 						}
 
-					}
-
-				});
+					});
+				} else {
+					//value doesn't exist in the database
+				}
 
 
 			}
@@ -1452,7 +1418,7 @@ export module datastore {
 			 * @param schema
 			 * @param entity
 			 */
-			private _convertDataToInstrumentedEntityData(schema: ISchema, entity: IEntity<any>): IEntityInstrumentedData[] {
+			private _convertDataToInstrumentedEntityData(schema: _ds.ISchema, entity: IEntity<any>): IEntityInstrumentedData[] {
 
 				//loop through schema props, extracting out dbTyped props into an instrumented array
 				const toReturn: IEntityInstrumentedData[] = [];
@@ -1462,11 +1428,11 @@ export module datastore {
 					//construct our data to insert for this prop, including metadata
 					const instrumentedData: IEntityInstrumentedData = {
 						name: key,
-						value: entity.schemaData[key],
+						value: entity.data[key],
 						excludeFromIndexes: prop.isDbIndexExcluded,
 					};
 
-					if (entity.schemaData[key] == null) {
+					if (entity.data[key] == null) {
 
 						instrumentedData.value = null;
 
@@ -1479,7 +1445,7 @@ export module datastore {
 					} else {
 						//transform certain data types, and ensure that the schema is of the right type too
 
-						const valueType = xlib.reflection.getType(entity.schemaData[key]);
+						const valueType = xlib.reflection.getType(entity.data[key]);
 
 						let expectedType: xlib.reflection.Type;
 
@@ -1492,19 +1458,19 @@ export module datastore {
 								break;
 							case "double":
 								//coherse to double
-								instrumentedData.value = this._ezDatastore.assistantDatastore.double(entity.schemaData[key]);
+								instrumentedData.value = this._ezDatastore.assistantDatastore.double(entity.data[key]);
 								expectedType = xlib.reflection.Type.number;
 								break;
 							case "integer":
 								//coherse to int
-								instrumentedData.value = this._ezDatastore.assistantDatastore.int(entity.schemaData[key]);
+								instrumentedData.value = this._ezDatastore.assistantDatastore.int(entity.data[key]);
 								expectedType = xlib.reflection.Type.number;
 								break;
 							case "boolean":
 								expectedType = xlib.reflection.Type.boolean;
 								break;
 							case "blob":
-								instrumentedData.value = _.cloneDeep(entity.schemaData[key]);
+								instrumentedData.value = _.cloneDeep(entity.data[key]);
 								expectedType = xlib.reflection.Type.object;
 								break;
 							case "date":
@@ -1526,20 +1492,20 @@ export module datastore {
 
 			}
 
-			private _verifyEntityMatchesSchema(schema: ISchema, entity: IEntity<any>) {
+			private _verifyEntityMatchesSchema(schema: _ds.ISchema, entity: IEntity<any>) {
 				if (entity.namespace == null && schema.db.isNamespaceRequired === true) {
-					throw log.error("entity must have namespace set to read from db", { schema, entity });
+					throw log.error("entity must have namespace set to read/write from db", { schema, entity });
 				}
 				if (entity.kind !== schema.db.kind) {
 					throw log.error("entity and schema kinds do not match", { schema, entity });
 				}
 			}
 			/**
-			 *  if entity doesn't exist in the db, all db properties will have their values set to ```undefined``` and ```schemaEntity.db.exists===false```
+			 *  if entity doesn't exist in the db, all db properties will not be set (so, keeping their previous values, which are mose likely ```undefined```) and also we set ```schemaEntity.db.exists===false```
 			 * @param schemaEntity
 			 * @param transaction
 			 */
-			public readGet<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+			public readGet<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
 
 				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
@@ -1552,13 +1518,13 @@ export module datastore {
 
 				return connection.getEz<any>(schema.db.kind, entity.id, entity.namespace)
 					.then((dbResponse) => {
-						this._processDbResponse(schema, dbResponse, entity);
+						this._processDbResponse_Read(schema, dbResponse, entity);
 						let result: IEzOrmResult<TEntity> = { schema, entity };
 						return Promise.resolve(result);
 					});
 			}
 
-			public readGetMustExist<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+			public readGetMustExist<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
 				return this.readGet(schema, entity, transaction)
 					.then((readResponse) => {
 						if (readResponse.entity.dbResult == null) {
@@ -1571,7 +1537,7 @@ export module datastore {
 					});
 			}
 
-			public writeInsert<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+			public writeInsert<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
 				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
 				this._verifyEntityMatchesSchema(schema, entity);
@@ -1582,13 +1548,15 @@ export module datastore {
 
 				return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
 					.then((writeResponse) => {
-						this._processDbResponse(schema, writeResponse, entity);
+						//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+						writeResponse.entity.data = undefined;
+						this._processDbResponse_Write(schema, writeResponse, entity);
 						return Promise.resolve({ schema, entity });
 					});
 
 			}
 
-			public writeUpdate<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+			public writeUpdate<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
 				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
 				this._verifyEntityMatchesSchema(schema, entity);
@@ -1601,13 +1569,15 @@ export module datastore {
 
 				return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
 					.then((writeResponse) => {
-						this._processDbResponse(schema, writeResponse, entity);
+						//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+						writeResponse.entity.data = undefined;
+						this._processDbResponse_Write(schema, writeResponse, entity);
 						return Promise.resolve({ schema, entity });
 					});
 
 			}
 
-			public writeUpsert<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+			public writeUpsert<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
 				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
 				this._verifyEntityMatchesSchema(schema, entity);
@@ -1620,12 +1590,20 @@ export module datastore {
 
 				return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
 					.then((writeResponse) => {
-						this._processDbResponse(schema, writeResponse, entity);
+						//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+						writeResponse.entity.data = undefined;
+						this._processDbResponse_Write(schema, writeResponse, entity);
 						return Promise.resolve({ schema, entity });
 					});
 
 			}
-			public writeDelete<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+			/**
+			 *  a successfull delete will set entity.dbResult.exists=false.  but will not delete the entity.id value.
+			 * @param schema
+			 * @param entity
+			 * @param transaction
+			 */
+			public writeDelete<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
 				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
 				this._verifyEntityMatchesSchema(schema, entity);
@@ -1637,6 +1615,11 @@ export module datastore {
 				return connection.deleteEz(entity.kind, entity.id, entity.namespace)
 					.then((deleteResponse) => {
 
+						//if (entity.id == null) {
+						//	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
+						//}
+
+						//entity.id = undefined;
 						entity.dbResult = {
 							dbEntity: undefined,
 							exists: false,
@@ -1653,62 +1636,10 @@ export module datastore {
 		}
 
 		export interface IEzOrmResult<TEntity> {
-			schema: ISchema;
+			schema: _ds.ISchema;
 			entity: TEntity;
 		}
 
-		//	export class EzSchemaEntity<TSchema extends IObjectSchema>{
-
-
-		//		constructor(
-		//			public _ezDatastore: EzDatastore,
-		//			public schemaTemplate: TSchema,
-		//			namespace: string,
-		//			id?: number
-		//		) {
-
-		//			let excludeFromIndexes: { [propertyName: string]: boolean } = {};
-
-		//			xlib.lolo.forEach(schemaTemplate.properties, (prop, name) => {
-		//				excludeFromIndexes[name] = prop.isDbIndexExcluded === true;
-		//			});
-
-
-		//			this._ezEntity = new EzEntity<number, any>(
-		//				_ezDatastore,
-		//				{
-		//					kind: schemaTemplate.db.kind,
-		//					namespace: namespace,
-		//					excludeFromIndexes: excludeFromIndexes,
-		//				},
-		//				id as number);
-
-		//		}
-
-		//		/** get a copy of the current data. (overwritten when you do a write, or a read from the db) */
-		//		public getData(): TSchema {
-		//			log.todo("not implemented");
-		//			throw new Error("not implemented");
-		//		}
-
-
-
-		//		/**
-		//		 *  create a query for entities of this kind.  (not related to this key, just a shortcut to dataset.connection.createQuery)
-		//		 */
-		//		public queryCreate() {
-		//			return this._ezEntity._query_create();
-		//		}
-
-		//		public readGet(transaction?: _gcd.EzTransaction): Promise<
-
-
-
-		//			/** internal helper for doing actual orm mapping of our schema */
-		//			private _ezEntity: _gcd.EzEntity<number, any>;
-
-
-		//}
 	}
 
 

@@ -1,5 +1,4 @@
 /// <reference types="node" />
-/// <reference types="bluebird" />
 import xlib = require("xlib");
 import Promise = xlib.promise.bluebird;
 export interface IModuleImport {
@@ -22,9 +21,11 @@ export declare module datastore {
     /** the raw entity returned by the datastore api */
     interface IDbEntity<TData> {
         key: IKey;
-        method?: string;
-        /** Data to save with the provided key. If you provide an array of objects, you must use the explicit syntax: name for the name of the property and value for its value. You may also specify an excludeFromIndexes property, set to true or false. */
-        data: TData;
+        /** Data to save with the provided key. If you provide an array of objects, you must use the explicit syntax: name for the name of the property and value for its value. You may also specify an excludeFromIndexes property, set to true or false.
+        if using via EzOrm, this will be set to undefined for write calls (as no dbEntity is actually read from the db, so don't confuse you)
+        also will be undefined if reading a non-existing value
+         */
+        data: TData | undefined;
     }
     interface IDatastoreOptions extends IAuthOptions {
         /** Override the default API endpoint used to reach Datastore. This is useful for connecting to your local Datastore server (usually "http://localhost:8080"). */
@@ -61,10 +62,10 @@ datastore#NO_MORE_RESULTS: There are no more results.*/
         /** Delete all entities identified with the specified key(s). */
         delete(key: IKey | IKey[], callback: (err: any, apiResponse: ICallbackApiResponse) => void): void;
         /** Retrieve the entities identified with the specified key(s) in the current transaction. Get operations require a valid key to retrieve the key-identified entity from Datastore. */
-        get<TEntityData>(key: IKey, callback: (err: any, entity: IDbEntity<TEntityData>, apiResponse?: ICallbackApiResponse) => void): void;
-        get<TEntityData>(keys: IKey[], callback: (err: any, entities: IDbEntity<TEntityData>[], apiResponse?: ICallbackApiResponse) => void): void;
-        get<TEntityData>(key: IKey, options: ICoreApiOptions, callback: (err: any, entity: IDbEntity<TEntityData>, apiResponse?: ICallbackApiResponse) => void): void;
-        get<TEntityData>(keys: IKey[], options: ICoreApiOptions, callback: (err: any, entities: IDbEntity<TEntityData>[], apiResponse?: ICallbackApiResponse) => void): void;
+        get<TEntityData>(key: IKey, callback: (err: any, data: TEntityData, apiResponse?: ICallbackApiResponse) => void): void;
+        get<TEntityData>(keys: IKey[], callback: (err: any, datas: TEntityData[], apiResponse?: ICallbackApiResponse) => void): void;
+        get<TEntityData>(key: IKey, options: ICoreApiOptions, callback: (err: any, data: TEntityData, apiResponse?: ICallbackApiResponse) => void): void;
+        get<TEntityData>(keys: IKey[], options: ICoreApiOptions, callback: (err: any, datas: TEntityData[], apiResponse?: ICallbackApiResponse) => void): void;
         get<TEntityData>(key: IKey, options?: ICoreApiOptions): IStream<IDbEntity<TEntityData>>;
         /** Datastore allows you to query entities by kind, filter them by property filters, and sort them by a property name. Projection and pagination are also supported.
 
@@ -309,11 +310,11 @@ export declare module datastore {
             apiResponse: any;
         }>;
         get<TEntityData>(key: IKey): Promise<{
-            entity: IDbEntity<TEntityData>;
+            readResult: IDbEntity<TEntityData>;
             apiResponse: any;
         }>;
         get<TEntityData>(keys: IKey[]): Promise<{
-            entity: IDbEntity<TEntityData>[];
+            readResult: IDbEntity<TEntityData>[];
             apiResponse: any;
         }>;
         getEz<TEntityData>(kind: string, idOrName: string | number, namespace?: string): Promise<{
@@ -470,70 +471,18 @@ export declare module datastore {
     }
     class DatastoreException extends xlib.exception.Exception {
     }
+    import _ds = xlib.designPatterns.dataSchema;
     /**
-     *  scratch for unifying database and ui  schemas
+     *  orm helper for use with the xlib.designPatterns.dataSchema pattern.
      */
     module dataSchema {
-        /** for all supported db types, see: https://cloud.google.com/datastore/docs/concepts/entities#properties_and_value_types
-        */
-        type DbType = "string" | "double" | "integer" | "boolean" | "date" | "blob" | "none";
-        interface IPropertySchema<TValue> {
-            default?: TValue;
-            /** if input (and store) of this field is optional.  if so, then will store NULL on the database for this property if it is not set. */
-            isOptional?: boolean;
-            /** if this field is hidden from user input (set on the server side).  note that if both .isOptional and .isHidden are true, it means the property is required to be set on the server before writing to the db. */
-            isHidden?: boolean;
-            /** how this should be stored in the database.   use "none" to not store the field in the db */
-            dbType: DbType;
-            /** by default all properties are indexed (add +1x the entity size for each indexed field!  expensive!)  so you can disable this for properties that you know are not going to be sorted by, if a large number of entities of that kind need to be stored. */
-            isDbIndexExcluded?: boolean;
-            /** can set an optional input format, used when using the react-jsonschema-form react plugin.   used as it's "type" field. */
-            inputType?: string;
-        }
-        interface IStringProperty extends IPropertySchema<string> {
-            inputType?: "textarea" | "password" | "color" | "text";
-            inputFormat?: "email" | "uri" | "data-url" | "date" | "date-time";
-            dbType: "string" | "none";
-            /** if true, keeps empty strings, otherwise converts to null */
-            allowEmpty?: boolean;
-        }
-        interface IDateProperty extends IPropertySchema<Date> {
-            inputType?: "text";
-            inputFormat: "date" | "date-time";
-            dbType: "date" | "none";
-        }
-        interface INumberProperty extends IPropertySchema<number> {
-            dbType: "double" | "integer" | "none";
-            inputType?: "updown" | "range" | "text";
-            minimum?: number;
-            maximum?: number;
-            multipleOf?: number;
-        }
-        interface IDoubleProperty extends INumberProperty {
-            dbType: "double" | "none";
-        }
-        interface IIntegerProperty extends INumberProperty {
-            dbType: "integer" | "none";
-        }
-        interface ISchema {
-            properties: {
-                [propertyName: string]: IPropertySchema<any>;
-            };
-            db: {
-                kind: string;
-                /** default false.   if true, will not raise errors on invalid schema from the database reads/writes */
-                suppressInvalidSchemaErrors?: boolean;
-                /** default false.   if true, will raise an error if the namespace is not specified */
-                isNamespaceRequired?: boolean;
-            };
-        }
         interface IEntity<TData> {
             kind: string;
             namespace?: string;
             id?: number;
             /** data conforming to the schema.  includes code-runtime-specific props, and also props that are stored in the database (using custom "mixin" logic).
             thus even if the dbEntity doesn't exist, this will NOT be undefined.  (check ```this.dbResult.exists``` to determine existance) */
-            schemaData: TData;
+            data: TData;
             dbResult?: {
                 dbEntity?: IDbEntity<TData>;
                 /** for advanced usage or diagnostics: the last associated api response from the datastore api.   */
@@ -542,17 +491,6 @@ export declare module datastore {
                 exists: boolean;
             };
         }
-        interface ICustomerData {
-            name: string;
-            address: string;
-            city: string;
-            state: string;
-            zip: string;
-            notes?: string;
-        }
-        interface ICustomerEntity extends IEntity<ICustomerData> {
-        }
-        const CustomerSchema: ISchema;
         /**
          * handle ORM calls based on a given Schema (ISchema) and entity (IEntity of type TData).
          * todo: describe errors+error handling better: https://cloud.google.com/datastore/docs/concepts/errors
@@ -561,11 +499,27 @@ export declare module datastore {
             _ezDatastore: EzDatastore;
             constructor(_ezDatastore: EzDatastore);
             /**
+             *  helper to construct a new entity of the type requested
+             * @param schema
+             * @param namespace
+             */
+            ezConstructEntity<TData>(schema: _ds.ISchema, namespace?: string, id?: number): IEntity<TData>;
+            private _processDbResponse_KeyHelper(schema, dbResponse, entity);
+            /**
+             * updates the entity with only the key data from the db.  schema validation is also performed.
+             * when writing the db values are not read back.  these are in IEntityInstrumentedData[] format as they are just echos of the input values
+             * @param schema
+             * @param dbResponse
+             * @param entity
+             */
+            private _processDbResponse_Write(schema, dbResponse, entity);
+            /**
              *  updates the entity with values from the db.   schema validation is also performed.
+             * if entity does not exist, does not delete props
              * @param schemaEntity
              * @param dbResponse
              */
-            private _processDbResponse(schema, dbResponse, entity);
+            private _processDbResponse_Read(schema, dbResponse, entity);
             /**
              *  translate our data into an instrumeted "metadata" format used by google cloud datastore for writes
              * @param schema
@@ -574,19 +528,25 @@ export declare module datastore {
             private _convertDataToInstrumentedEntityData(schema, entity);
             private _verifyEntityMatchesSchema(schema, entity);
             /**
-             *  if entity doesn't exist in the db, all db properties will have their values set to ```undefined``` and ```schemaEntity.db.exists===false```
+             *  if entity doesn't exist in the db, all db properties will not be set (so, keeping their previous values, which are mose likely ```undefined```) and also we set ```schemaEntity.db.exists===false```
              * @param schemaEntity
              * @param transaction
              */
-            readGet<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
-            readGetMustExist<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
-            writeInsert<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
-            writeUpdate<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
-            writeUpsert<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
-            writeDelete<TEntity extends IEntity<any>>(schema: ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
+            readGet<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
+            readGetMustExist<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
+            writeInsert<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
+            writeUpdate<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
+            writeUpsert<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
+            /**
+             *  a successfull delete will set entity.dbResult.exists=false.  but will not delete the entity.id value.
+             * @param schema
+             * @param entity
+             * @param transaction
+             */
+            writeDelete<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>>;
         }
         interface IEzOrmResult<TEntity> {
-            schema: ISchema;
+            schema: _ds.ISchema;
             entity: TEntity;
         }
     }

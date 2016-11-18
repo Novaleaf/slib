@@ -1,4 +1,3 @@
-/// <reference types="bluebird" />
 import xlib = require("xlib");
 import Promise = xlib.promise.bluebird;
 /** the main hapi library.  >=12.x  */

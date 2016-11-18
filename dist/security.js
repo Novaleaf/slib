@@ -73,8 +73,8 @@ rounds=31: 2-3 days/hash */
         return promise;
     }
 }
-__OldKdf._defaultRounds = 12;
 exports.__OldKdf = __OldKdf;
+__OldKdf._defaultRounds = 12;
 /**
  * simple to use KDF.  modern, secure, gpu resistant, and promise friendly.
  *  https://en.wikipedia.org/wiki/Key_derivation_function
@@ -120,8 +120,8 @@ class Kdf {
         return promise;
     }
 }
-Kdf._defaultOptions = { argon2d: false, memoryCost: 12, parallelism: 2, timeCost: 10 };
 exports.Kdf = Kdf;
+Kdf._defaultOptions = { argon2d: false, memoryCost: 12, parallelism: 2, timeCost: 10 };
 /**
  * A realistic password strength estimator https://github.com/dropbox/zxcvbn
 Could be run clientside, but is about 400KB in size, so probably not.  Idea?:  for client side, maybe try this if it's smaller: https://github.com/mozilla/fxa-password-strength-checker

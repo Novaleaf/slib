@@ -98,16 +98,44 @@ var datastore;
         get(keyOrKeys) {
             logGCloud.trace(`_EzConnectionBase.get`, { arguments });
             return new Promise((resolve, reject) => {
-                this._connection.get(keyOrKeys, 
-                //	{ consistency: "strong" },
-                    (err, entityOrEntities, apiResponse) => {
-                    if (err != null) {
-                        //err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
-                        err.apiResponse = apiResponse;
-                        return reject(err);
-                    }
-                    return resolve({ entity: entityOrEntities, apiResponse });
-                });
+                if (_.isArray(keyOrKeys) === true) {
+                    //handle case an array of keys is passed
+                    const keys = keyOrKeys;
+                    this._connection.get(keys, (err, datas, apiResponse) => {
+                        if (err != null) {
+                            //err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
+                            err.apiResponse = apiResponse;
+                            return reject(err);
+                        }
+                        let entities = [];
+                        __.forEach(keys, (key, index) => {
+                            let entity = {
+                                key,
+                                data: datas[index],
+                            };
+                            entities.push(entity);
+                        });
+                        let toReturn = { readResult: entities, apiResponse };
+                        return resolve(toReturn);
+                    });
+                }
+                else {
+                    //handle case a single key is passed
+                    const key = keyOrKeys;
+                    this._connection.get(key, (err, data, apiResponse) => {
+                        if (err != null) {
+                            //err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
+                            err.apiResponse = apiResponse;
+                            return reject(err);
+                        }
+                        let entity = {
+                            key,
+                            data,
+                        };
+                        let toReturn = { readResult: entity, apiResponse };
+                        return resolve(toReturn);
+                    });
+                }
             });
         }
         getEz(kind, idOrName, namespace) {
@@ -116,8 +144,10 @@ var datastore;
                 path.push(idOrName);
             }
             let keyObj = this.assistantDatastore.key({ path, namespace });
-            var toReturn = this.get(keyObj);
-            return toReturn;
+            return this.get(keyObj)
+                .then((readResult) => {
+                return Promise.resolve({ entity: readResult.readResult, apiResponse: readResult.apiResponse });
+            });
         }
         insertEz(kind, idOrName, data, namespace) {
             let path = [kind];
@@ -637,50 +667,10 @@ var datastore;
     datastore.DatastoreException = DatastoreException;
     ;
     /**
-     *  scratch for unifying database and ui  schemas
+     *  orm helper for use with the xlib.designPatterns.dataSchema pattern.
      */
     var dataSchema;
     (function (dataSchema) {
-        dataSchema.CustomerSchema = {
-            properties: {
-                name: {
-                    dbType: "string",
-                },
-                address: {
-                    dbType: "string",
-                },
-                city: {
-                    dbType: "string",
-                },
-                state: {
-                    dbType: "string",
-                },
-                zip: {
-                    dbType: "string",
-                },
-                notes: {
-                    dbType: "string",
-                    isOptional: true,
-                    isDbIndexExcluded: true,
-                },
-                createDate: {
-                    dbType: "date",
-                    inputFormat: "date-time",
-                    isOptional: true,
-                    isHidden: true,
-                },
-                /** the date+time of the last ui input */
-                lastUpdateDate: {
-                    dbType: "date",
-                    inputFormat: "date-time",
-                    isOptional: true,
-                    isHidden: true,
-                },
-            },
-            db: {
-                kind: "Customer",
-            },
-        };
         /**
          * handle ORM calls based on a given Schema (ISchema) and entity (IEntity of type TData).
          * todo: describe errors+error handling better: https://cloud.google.com/datastore/docs/concepts/errors
@@ -690,13 +680,30 @@ var datastore;
                 this._ezDatastore = _ezDatastore;
             }
             /**
-             *  updates the entity with values from the db.   schema validation is also performed.
-             * @param schemaEntity
-             * @param dbResponse
+             *  helper to construct a new entity of the type requested
+             * @param schema
+             * @param namespace
              */
-            _processDbResponse(schema, dbResponse, entity) {
-                log.errorAndThrowIfFalse(entity.id != null && entity.id !== dbResponse.entity.key.id, "id already exists, why does it change?");
-                log.errorAndThrowIfFalse(schema.db.kind == null || schema.db.kind !== dbResponse.entity.key.kind, "why is kind different?");
+            ezConstructEntity(schema, namespace, id) {
+                //convert a data object of the proper type
+                let schemaData = {};
+                __.forEach(schema.properties, (prop, key) => {
+                    schemaData[key] = prop.default;
+                });
+                //construct the entity to return
+                let toReturn = {
+                    dbResult: undefined,
+                    id: id,
+                    kind: schema.db.kind,
+                    namespace: namespace,
+                    data: schemaData,
+                };
+                return toReturn;
+            }
+            _processDbResponse_KeyHelper(schema, dbResponse, entity) {
+                log.errorAndThrowIfFalse(entity != null && dbResponse.entity != null && dbResponse.entity.key != null, "required obj is missing.  (entity or dbResponse.entity.key)", { entity, dbResponse });
+                log.errorAndThrowIfFalse(entity.id == null || entity.id === dbResponse.entity.key.id, "id already exists, why does it change?", { entity, dbResponse });
+                log.errorAndThrowIfFalse(schema.db.kind === dbResponse.entity.key.kind, "why is kind different?", { schema, dbResponse });
                 //update our fixed values from the db
                 entity.id = dbResponse.entity.key.id;
                 entity.kind = dbResponse.entity.key.kind;
@@ -705,58 +712,82 @@ var datastore;
                     lastApiResponse: dbResponse.apiResponse,
                     exists: dbResponse.entity.data != null,
                 };
-                if (entity.schemaData == null) {
-                    entity.schemaData = {};
+            }
+            /**
+             * updates the entity with only the key data from the db.  schema validation is also performed.
+             * when writing the db values are not read back.  these are in IEntityInstrumentedData[] format as they are just echos of the input values
+             * @param schema
+             * @param dbResponse
+             * @param entity
+             */
+            _processDbResponse_Write(schema, dbResponse, entity) {
+                this._processDbResponse_KeyHelper(schema, dbResponse, entity);
+            }
+            /**
+             *  updates the entity with values from the db.   schema validation is also performed.
+             * if entity does not exist, does not delete props
+             * @param schemaEntity
+             * @param dbResponse
+             */
+            _processDbResponse_Read(schema, dbResponse, entity) {
+                this._processDbResponse_KeyHelper(schema, dbResponse, entity);
+                if (entity.data == null) {
+                    entity.data = {};
                 }
                 const dbData = dbResponse.entity.data;
-                //loop through all schemaProps and if the prop is a dbType, mix it into our entity data
-                __.forEach(schema.properties, (prop, key) => {
-                    if (prop.dbType === "none") {
-                        //not in the db, so don't update our entity's data value for this prop
-                        return;
-                    }
-                    const dbValue = dbData[key];
-                    if (dbValue == null) {
-                        //set our returning value to null
-                        entity.schemaData[key] = null;
-                        //prop missing in db (undefined) or null
-                        if (prop.isOptional !== true && schema.db.suppressInvalidSchemaErrors !== true) {
-                            throw log.error("missing prop in dbEntity", { prop, key, dbData });
+                if (dbData != null) {
+                    //exists
+                    //loop through all schemaProps and if the prop is a dbType, mix it into our entity data
+                    __.forEach(schema.properties, (prop, key) => {
+                        if (prop.dbType === "none") {
+                            //not in the db, so don't update our entity's data value for this prop
+                            return;
                         }
-                    }
-                    else {
-                        //prop found in db, mixin the value
-                        entity.schemaData[key] = dbValue;
-                        if (schema.db.suppressInvalidSchemaErrors !== true) {
-                            //compare dbType to what the schema says it should be
-                            const dbType = xlib.reflection.getType(dbValue);
-                            switch (schema.properties[key].dbType) {
-                                case "string":
-                                    log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.string);
-                                    break;
-                                case "double":
-                                    log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
-                                    break;
-                                case "integer":
-                                    log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
-                                    break;
-                                case "boolean":
-                                    log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.boolean);
-                                    break;
-                                case "blob":
-                                    log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.object);
-                                    break;
-                                case "date":
-                                    log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.Date);
-                                    break;
-                                case "none":
-                                    throw log.error("dbtype set to none, should not exist in db");
-                                default:
-                                    throw log.error("unknown dbtype, need to add handling of this in the ._processDbResponse() worker fcn", { key, prop });
+                        const dbValue = dbData[key];
+                        if (dbValue == null) {
+                            //set our returning value to null
+                            entity.data[key] = null;
+                            //prop missing in db (undefined) or null
+                            if (prop.isOptional !== true && schema.db.suppressInvalidSchemaErrors !== true) {
+                                throw log.error("missing prop in dbEntity", { key, schema, entity, dbResponse, isSameRef: entity.data === dbResponse.entity.data });
                             }
                         }
-                    }
-                });
+                        else {
+                            //prop found in db, mixin the value
+                            entity.data[key] = dbValue;
+                            if (schema.db.suppressInvalidSchemaErrors !== true) {
+                                //compare dbType to what the schema says it should be
+                                const dbType = xlib.reflection.getType(dbValue);
+                                switch (schema.properties[key].dbType) {
+                                    case "string":
+                                        log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.string);
+                                        break;
+                                    case "double":
+                                        log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
+                                        break;
+                                    case "integer":
+                                        log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.number);
+                                        break;
+                                    case "boolean":
+                                        log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.boolean);
+                                        break;
+                                    case "blob":
+                                        log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.object);
+                                        break;
+                                    case "date":
+                                        log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.Date);
+                                        break;
+                                    case "none":
+                                        throw log.error("dbtype set to none, should not exist in db");
+                                    default:
+                                        throw log.error("unknown dbtype, need to add handling of this in the ._processDbResponse() worker fcn", { key, prop });
+                                }
+                            }
+                        }
+                    });
+                }
+                else {
+                }
             }
             /**
              *  translate our data into an instrumeted "metadata" format used by google cloud datastore for writes
@@ -770,10 +801,10 @@ var datastore;
                     //construct our data to insert for this prop, including metadata
                     const instrumentedData = {
                         name: key,
-                        value: entity.schemaData[key],
+                        value: entity.data[key],
                         excludeFromIndexes: prop.isDbIndexExcluded,
                     };
-                    if (entity.schemaData[key] == null) {
+                    if (entity.data[key] == null) {
                         instrumentedData.value = null;
                         if (prop.isOptional === true) {
                         }
@@ -784,7 +815,7 @@ var datastore;
                     }
                     else {
                         //transform certain data types, and ensure that the schema is of the right type too
-                        const valueType = xlib.reflection.getType(entity.schemaData[key]);
+                        const valueType = xlib.reflection.getType(entity.data[key]);
                         let expectedType;
                         switch (prop.dbType) {
                             case "none":
@@ -795,19 +826,19 @@ var datastore;
                                 break;
                             case "double":
                                 //coherse to double
-                                instrumentedData.value = this._ezDatastore.assistantDatastore.double(entity.schemaData[key]);
+                                instrumentedData.value = this._ezDatastore.assistantDatastore.double(entity.data[key]);
                                 expectedType = xlib.reflection.Type.number;
                                 break;
                             case "integer":
                                 //coherse to int
-                                instrumentedData.value = this._ezDatastore.assistantDatastore.int(entity.schemaData[key]);
+                                instrumentedData.value = this._ezDatastore.assistantDatastore.int(entity.data[key]);
                                 expectedType = xlib.reflection.Type.number;
                                 break;
                             case "boolean":
                                 expectedType = xlib.reflection.Type.boolean;
                                 break;
                             case "blob":
-                                instrumentedData.value = _.cloneDeep(entity.schemaData[key]);
+                                instrumentedData.value = _.cloneDeep(entity.data[key]);
                                 expectedType = xlib.reflection.Type.object;
                                 break;
                             case "date":
@@ -825,14 +856,14 @@ var datastore;
             }
             _verifyEntityMatchesSchema(schema, entity) {
                 if (entity.namespace == null && schema.db.isNamespaceRequired === true) {
-                    throw log.error("entity must have namespace set to read from db", { schema, entity });
+                    throw log.error("entity must have namespace set to read/write from db", { schema, entity });
                 }
                 if (entity.kind !== schema.db.kind) {
                     throw log.error("entity and schema kinds do not match", { schema, entity });
                 }
             }
             /**
-             *  if entity doesn't exist in the db, all db properties will have their values set to ```undefined``` and ```schemaEntity.db.exists===false```
+             *  if entity doesn't exist in the db, all db properties will not be set (so, keeping their previous values, which are mose likely ```undefined```) and also we set ```schemaEntity.db.exists===false```
              * @param schemaEntity
              * @param transaction
              */
@@ -844,7 +875,7 @@ var datastore;
                 }
                 return connection.getEz(schema.db.kind, entity.id, entity.namespace)
                     .then((dbResponse) => {
-                    this._processDbResponse(schema, dbResponse, entity);
+                    this._processDbResponse_Read(schema, dbResponse, entity);
                     let result = { schema, entity };
                     return Promise.resolve(result);
                 });
@@ -868,7 +899,9 @@ var datastore;
                 log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity, schema });
                 return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
                     .then((writeResponse) => {
-                    this._processDbResponse(schema, writeResponse, entity);
+                    //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+                    writeResponse.entity.data = undefined;
+                    this._processDbResponse_Write(schema, writeResponse, entity);
                     return Promise.resolve({ schema, entity });
                 });
             }
@@ -881,7 +914,9 @@ var datastore;
                 }
                 return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
                     .then((writeResponse) => {
-                    this._processDbResponse(schema, writeResponse, entity);
+                    //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+                    writeResponse.entity.data = undefined;
+                    this._processDbResponse_Write(schema, writeResponse, entity);
                     return Promise.resolve({ schema, entity });
                 });
             }
@@ -894,10 +929,18 @@ var datastore;
                 }
                 return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
                     .then((writeResponse) => {
-                    this._processDbResponse(schema, writeResponse, entity);
+                    //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+                    writeResponse.entity.data = undefined;
+                    this._processDbResponse_Write(schema, writeResponse, entity);
                     return Promise.resolve({ schema, entity });
                 });
             }
+            /**
+             *  a successfull delete will set entity.dbResult.exists=false.  but will not delete the entity.id value.
+             * @param schema
+             * @param entity
+             * @param transaction
+             */
             writeDelete(schema, entity, transaction) {
                 var connection = transaction == null ? this._ezDatastore : transaction;
                 this._verifyEntityMatchesSchema(schema, entity);
@@ -906,6 +949,10 @@ var datastore;
                 }
                 return connection.deleteEz(entity.kind, entity.id, entity.namespace)
                     .then((deleteResponse) => {
+                    //if (entity.id == null) {
+                    //	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
+                    //}
+                    //entity.id = undefined;
                     entity.dbResult = {
                         dbEntity: undefined,
                         exists: false,
