@@ -355,8 +355,8 @@ export declare module datastore {
         ezEntity: TEzEntity;
         apiResponse: any;
     }
-    /** an base class for helping to create an ORM*/
-    class EzEntity<TId extends string | (number), TData> {
+    /** DEPRECATED:  use EzOrm instead*/
+    class __EzEntity_DEPRECATED<TId extends string | (number), TData> {
         _ezDatastore: EzDatastore;
         options: {
             /** for multitenancy, can be undefined to use the default namespace */

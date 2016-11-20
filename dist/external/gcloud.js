@@ -281,8 +281,8 @@ var datastore;
         }
     }
     datastore._EzConnectionBase = _EzConnectionBase;
-    /** an base class for helping to create an ORM*/
-    class EzEntity {
+    /** DEPRECATED:  use EzOrm instead*/
+    class __EzEntity_DEPRECATED {
         constructor(_ezDatastore, options, 
             /** can be undefined if using a numeric ID, in that case the ID will be auto-assigned on the server.  this is updated whenever we read from the datastore server */
             idOrName, 
@@ -463,7 +463,7 @@ var datastore;
             }
         }
     }
-    datastore.EzEntity = EzEntity;
+    datastore.__EzEntity_DEPRECATED = __EzEntity_DEPRECATED;
     class EzDatastore extends _EzConnectionBase {
         constructor(dataset) {
             super(dataset, dataset);
@@ -743,7 +743,10 @@ var datastore;
                             //not in the db, so don't update our entity's data value for this prop
                             return;
                         }
-                        const dbValue = dbData[key];
+                        let dbValue = dbData[key];
+                        if (prop.dbReadTransform != null) {
+                            dbValue = prop.dbReadTransform(dbValue);
+                        }
                         if (dbValue == null) {
                             //set our returning value to null
                             entity.data[key] = null;
@@ -753,7 +756,7 @@ var datastore;
                             }
                         }
                         else {
-                            //prop found in db, mixin the value
+                            //prop found in db, mixin the value							
                             entity.data[key] = dbValue;
                             if (schema.db.suppressInvalidSchemaErrors !== true) {
                                 //compare dbType to what the schema says it should be
@@ -798,24 +801,45 @@ var datastore;
                 //loop through schema props, extracting out dbTyped props into an instrumented array
                 const toReturn = [];
                 __.forEach(schema.properties, (prop, key) => {
+                    //handle special prop parameters that can modify our entity prop value
+                    {
+                        let tempVal = entity.data[key];
+                        if (typeof (tempVal) === "string") {
+                            let strProp = prop;
+                            if (strProp.toLowercaseTrim === true) {
+                                tempVal = tempVal.toLowerCase().trim();
+                            }
+                            if (strProp.allowEmpty !== true && tempVal.length == 0) {
+                                tempVal = null;
+                            }
+                        }
+                        entity.data[key] = tempVal;
+                    }
                     //construct our data to insert for this prop, including metadata
                     const instrumentedData = {
                         name: key,
                         value: entity.data[key],
                         excludeFromIndexes: prop.isDbIndexExcluded,
                     };
-                    if (entity.data[key] == null) {
+                    //if there is a writeTransform, use it
+                    if (prop.dbWriteTransform != null) {
+                        let transformResult = prop.dbWriteTransform(entity.data[key]);
+                        instrumentedData.value = transformResult.dbValue;
+                        entity.data[key] = transformResult.value;
+                    }
+                    if (instrumentedData.value == null) {
                         instrumentedData.value = null;
                         if (prop.isOptional === true) {
                         }
                         else if (schema.db.suppressInvalidSchemaErrors !== true) {
                             //not optional!
-                            throw log.error("prop is not optional", { prop, entity, schema });
+                            log.trace("prop is not optional", { key, prop, entity, schema });
+                            throw new xlib.exception.Exception("prop is not optional", { data: { key, prop, entity, schema } });
                         }
                     }
                     else {
                         //transform certain data types, and ensure that the schema is of the right type too
-                        const valueType = xlib.reflection.getType(entity.data[key]);
+                        const valueType = xlib.reflection.getType(instrumentedData.value);
                         let expectedType;
                         switch (prop.dbType) {
                             case "none":
@@ -826,19 +850,19 @@ var datastore;
                                 break;
                             case "double":
                                 //coherse to double
-                                instrumentedData.value = this._ezDatastore.assistantDatastore.double(entity.data[key]);
+                                instrumentedData.value = this._ezDatastore.assistantDatastore.double(instrumentedData.value);
                                 expectedType = xlib.reflection.Type.number;
                                 break;
                             case "integer":
                                 //coherse to int
-                                instrumentedData.value = this._ezDatastore.assistantDatastore.int(entity.data[key]);
+                                instrumentedData.value = this._ezDatastore.assistantDatastore.int(instrumentedData.value);
                                 expectedType = xlib.reflection.Type.number;
                                 break;
                             case "boolean":
                                 expectedType = xlib.reflection.Type.boolean;
                                 break;
                             case "blob":
-                                instrumentedData.value = _.cloneDeep(entity.data[key]);
+                                //instrumentedData.value = _.cloneDeep(entity.data[key]); //don't copy by default, let the user specify a writeTransform if they need to do this
                                 expectedType = xlib.reflection.Type.object;
                                 break;
                             case "date":
@@ -868,16 +892,18 @@ var datastore;
              * @param transaction
              */
             readGet(schema, entity, transaction) {
-                var connection = transaction == null ? this._ezDatastore : transaction;
-                this._verifyEntityMatchesSchema(schema, entity);
-                if (entity.id == null) {
-                    throw log.error("entity must have id set to read from db", { schema, entity });
-                }
-                return connection.getEz(schema.db.kind, entity.id, entity.namespace)
-                    .then((dbResponse) => {
-                    this._processDbResponse_Read(schema, dbResponse, entity);
-                    let result = { schema, entity };
-                    return Promise.resolve(result);
+                return Promise.try(() => {
+                    var connection = transaction == null ? this._ezDatastore : transaction;
+                    this._verifyEntityMatchesSchema(schema, entity);
+                    if (entity.id == null) {
+                        throw log.error("entity must have id set to read from db", { schema, entity });
+                    }
+                    return connection.getEz(schema.db.kind, entity.id, entity.namespace)
+                        .then((dbResponse) => {
+                        this._processDbResponse_Read(schema, dbResponse, entity);
+                        let result = { schema, entity };
+                        return Promise.resolve(result);
+                    });
                 });
             }
             readGetMustExist(schema, entity, transaction) {
@@ -893,46 +919,52 @@ var datastore;
                 });
             }
             writeInsert(schema, entity, transaction) {
-                var connection = transaction == null ? this._ezDatastore : transaction;
-                this._verifyEntityMatchesSchema(schema, entity);
-                const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
-                log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity, schema });
-                return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-                    .then((writeResponse) => {
-                    //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
-                    writeResponse.entity.data = undefined;
-                    this._processDbResponse_Write(schema, writeResponse, entity);
-                    return Promise.resolve({ schema, entity });
+                return Promise.try(() => {
+                    var connection = transaction == null ? this._ezDatastore : transaction;
+                    this._verifyEntityMatchesSchema(schema, entity);
+                    const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+                    log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity, schema });
+                    return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
+                        .then((writeResponse) => {
+                        //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+                        writeResponse.entity.data = undefined;
+                        this._processDbResponse_Write(schema, writeResponse, entity);
+                        return Promise.resolve({ schema, entity });
+                    });
                 });
             }
             writeUpdate(schema, entity, transaction) {
-                var connection = transaction == null ? this._ezDatastore : transaction;
-                this._verifyEntityMatchesSchema(schema, entity);
-                const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
-                if (entity.id == null) {
-                    throw log.error("writeUpdating but no id is specified", { entity, schema });
-                }
-                return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-                    .then((writeResponse) => {
-                    //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
-                    writeResponse.entity.data = undefined;
-                    this._processDbResponse_Write(schema, writeResponse, entity);
-                    return Promise.resolve({ schema, entity });
+                return Promise.try(() => {
+                    var connection = transaction == null ? this._ezDatastore : transaction;
+                    this._verifyEntityMatchesSchema(schema, entity);
+                    const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+                    if (entity.id == null) {
+                        throw log.error("writeUpdating but no id is specified", { entity, schema });
+                    }
+                    return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
+                        .then((writeResponse) => {
+                        //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+                        writeResponse.entity.data = undefined;
+                        this._processDbResponse_Write(schema, writeResponse, entity);
+                        return Promise.resolve({ schema, entity });
+                    });
                 });
             }
             writeUpsert(schema, entity, transaction) {
-                var connection = transaction == null ? this._ezDatastore : transaction;
-                this._verifyEntityMatchesSchema(schema, entity);
-                const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
-                if (entity.id == null) {
-                    throw log.error("writeUpsert but no id is specified", { entity, schema });
-                }
-                return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-                    .then((writeResponse) => {
-                    //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
-                    writeResponse.entity.data = undefined;
-                    this._processDbResponse_Write(schema, writeResponse, entity);
-                    return Promise.resolve({ schema, entity });
+                return Promise.try(() => {
+                    var connection = transaction == null ? this._ezDatastore : transaction;
+                    this._verifyEntityMatchesSchema(schema, entity);
+                    const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+                    if (entity.id == null) {
+                        throw log.error("writeUpsert but no id is specified", { entity, schema });
+                    }
+                    return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
+                        .then((writeResponse) => {
+                        //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+                        writeResponse.entity.data = undefined;
+                        this._processDbResponse_Write(schema, writeResponse, entity);
+                        return Promise.resolve({ schema, entity });
+                    });
                 });
             }
             /**
@@ -942,23 +974,25 @@ var datastore;
              * @param transaction
              */
             writeDelete(schema, entity, transaction) {
-                var connection = transaction == null ? this._ezDatastore : transaction;
-                this._verifyEntityMatchesSchema(schema, entity);
-                if (entity.id == null) {
-                    throw log.error("writeDelete but no id is specified", { entity, schema });
-                }
-                return connection.deleteEz(entity.kind, entity.id, entity.namespace)
-                    .then((deleteResponse) => {
-                    //if (entity.id == null) {
-                    //	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
-                    //}
-                    //entity.id = undefined;
-                    entity.dbResult = {
-                        dbEntity: undefined,
-                        exists: false,
-                        lastApiResponse: deleteResponse.apiResponse,
-                    };
-                    return Promise.resolve({ schema, entity });
+                return Promise.try(() => {
+                    var connection = transaction == null ? this._ezDatastore : transaction;
+                    this._verifyEntityMatchesSchema(schema, entity);
+                    if (entity.id == null) {
+                        throw log.error("writeDelete but no id is specified", { entity, schema });
+                    }
+                    return connection.deleteEz(entity.kind, entity.id, entity.namespace)
+                        .then((deleteResponse) => {
+                        //if (entity.id == null) {
+                        //	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
+                        //}
+                        //entity.id = undefined;
+                        entity.dbResult = {
+                            dbEntity: undefined,
+                            exists: false,
+                            lastApiResponse: deleteResponse.apiResponse,
+                        };
+                        return Promise.resolve({ schema, entity });
+                    });
                 });
             }
         }

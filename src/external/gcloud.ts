@@ -727,8 +727,8 @@ export module datastore {
 		ezEntity: TEzEntity;
 		apiResponse: any;
 	}
-	/** an base class for helping to create an ORM*/
-	export class EzEntity<TId extends string | (number), TData>{
+	/** DEPRECATED:  use EzOrm instead*/
+	export class __EzEntity_DEPRECATED<TId extends string | (number), TData>{
 
 
 		constructor(
@@ -1358,8 +1358,10 @@ export module datastore {
 
 
 
-						const dbValue = dbData[key];
-
+						let dbValue = dbData[key];
+						if (prop.dbReadTransform != null) {
+							dbValue = prop.dbReadTransform(dbValue);
+						}
 
 
 						if (dbValue == null) {
@@ -1370,7 +1372,7 @@ export module datastore {
 								throw log.error("missing prop in dbEntity", { key, schema, entity, dbResponse, isSameRef: entity.data === dbResponse.entity.data });
 							}
 						} else {
-							//prop found in db, mixin the value
+							//prop found in db, mixin the value							
 							entity.data[key] = dbValue;
 
 							if (schema.db.suppressInvalidSchemaErrors !== true) {
@@ -1425,6 +1427,23 @@ export module datastore {
 
 				__.forEach(schema.properties, (prop, key) => {
 
+
+
+					//handle special prop parameters that can modify our entity prop value
+					{
+						let tempVal = entity.data[key];
+						if (typeof (tempVal) === "string") {
+							let strProp = prop as _ds.IStringProperty;
+							if (strProp.toLowercaseTrim === true) {
+								tempVal = tempVal.toLowerCase().trim();
+							}
+							if (strProp.allowEmpty !== true && tempVal.length == 0) {
+								tempVal = null;
+							}
+						}
+						entity.data[key] = tempVal;
+					}
+
 					//construct our data to insert for this prop, including metadata
 					const instrumentedData: IEntityInstrumentedData = {
 						name: key,
@@ -1432,7 +1451,18 @@ export module datastore {
 						excludeFromIndexes: prop.isDbIndexExcluded,
 					};
 
-					if (entity.data[key] == null) {
+
+					//if there is a writeTransform, use it
+					if (prop.dbWriteTransform != null) {
+						let transformResult = prop.dbWriteTransform(entity.data[key]);
+						instrumentedData.value = transformResult.dbValue;
+						entity.data[key] = transformResult.value;
+					}
+
+
+
+
+					if (instrumentedData.value == null) {
 
 						instrumentedData.value = null;
 
@@ -1440,12 +1470,13 @@ export module datastore {
 							//ok
 						} else if (schema.db.suppressInvalidSchemaErrors !== true) {
 							//not optional!
-							throw log.error("prop is not optional", { prop, entity, schema });
+							log.trace("prop is not optional", { key, prop, entity, schema });
+							throw new xlib.exception.Exception("prop is not optional", { data: { key, prop, entity, schema } });
 						}
 					} else {
 						//transform certain data types, and ensure that the schema is of the right type too
 
-						const valueType = xlib.reflection.getType(entity.data[key]);
+						const valueType = xlib.reflection.getType(instrumentedData.value);
 
 						let expectedType: xlib.reflection.Type;
 
@@ -1458,19 +1489,19 @@ export module datastore {
 								break;
 							case "double":
 								//coherse to double
-								instrumentedData.value = this._ezDatastore.assistantDatastore.double(entity.data[key]);
+								instrumentedData.value = this._ezDatastore.assistantDatastore.double(instrumentedData.value);
 								expectedType = xlib.reflection.Type.number;
 								break;
 							case "integer":
 								//coherse to int
-								instrumentedData.value = this._ezDatastore.assistantDatastore.int(entity.data[key]);
+								instrumentedData.value = this._ezDatastore.assistantDatastore.int(instrumentedData.value);
 								expectedType = xlib.reflection.Type.number;
 								break;
 							case "boolean":
 								expectedType = xlib.reflection.Type.boolean;
 								break;
 							case "blob":
-								instrumentedData.value = _.cloneDeep(entity.data[key]);
+								//instrumentedData.value = _.cloneDeep(entity.data[key]); //don't copy by default, let the user specify a writeTransform if they need to do this
 								expectedType = xlib.reflection.Type.object;
 								break;
 							case "date":
@@ -1506,22 +1537,23 @@ export module datastore {
 			 * @param transaction
 			 */
 			public readGet<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
+				return Promise.try(() => {
+					var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
-				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
+					this._verifyEntityMatchesSchema(schema, entity);
 
-				this._verifyEntityMatchesSchema(schema, entity);
-
-				if (entity.id == null) {
-					throw log.error("entity must have id set to read from db", { schema, entity });
-				}
+					if (entity.id == null) {
+						throw log.error("entity must have id set to read from db", { schema, entity });
+					}
 
 
-				return connection.getEz<any>(schema.db.kind, entity.id, entity.namespace)
-					.then((dbResponse) => {
-						this._processDbResponse_Read(schema, dbResponse, entity);
-						let result: IEzOrmResult<TEntity> = { schema, entity };
-						return Promise.resolve(result);
-					});
+					return connection.getEz<any>(schema.db.kind, entity.id, entity.namespace)
+						.then((dbResponse) => {
+							this._processDbResponse_Read(schema, dbResponse, entity);
+							let result: IEzOrmResult<TEntity> = { schema, entity };
+							return Promise.resolve(result);
+						});
+				});
 			}
 
 			public readGetMustExist<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
@@ -1538,64 +1570,67 @@ export module datastore {
 			}
 
 			public writeInsert<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
-				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
+				return Promise.try(() => {
+					var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
-				this._verifyEntityMatchesSchema(schema, entity);
+					this._verifyEntityMatchesSchema(schema, entity);
 
-				const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+					const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
 
-				log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity, schema });
+					log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity, schema });
 
-				return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-					.then((writeResponse) => {
-						//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
-						writeResponse.entity.data = undefined;
-						this._processDbResponse_Write(schema, writeResponse, entity);
-						return Promise.resolve({ schema, entity });
-					});
-
+					return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
+						.then((writeResponse) => {
+							//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+							writeResponse.entity.data = undefined;
+							this._processDbResponse_Write(schema, writeResponse, entity);
+							return Promise.resolve({ schema, entity });
+						});
+				});
 			}
 
 			public writeUpdate<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
-				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
+				return Promise.try(() => {
+					var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
-				this._verifyEntityMatchesSchema(schema, entity);
+					this._verifyEntityMatchesSchema(schema, entity);
 
-				const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+					const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
 
-				if (entity.id == null) {
-					throw log.error("writeUpdating but no id is specified", { entity, schema });
-				}
+					if (entity.id == null) {
+						throw log.error("writeUpdating but no id is specified", { entity, schema });
+					}
 
-				return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-					.then((writeResponse) => {
-						//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
-						writeResponse.entity.data = undefined;
-						this._processDbResponse_Write(schema, writeResponse, entity);
-						return Promise.resolve({ schema, entity });
-					});
-
+					return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
+						.then((writeResponse) => {
+							//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+							writeResponse.entity.data = undefined;
+							this._processDbResponse_Write(schema, writeResponse, entity);
+							return Promise.resolve({ schema, entity });
+						});
+				});
 			}
 
 			public writeUpsert<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
-				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
+				return Promise.try(() => {
+					var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
-				this._verifyEntityMatchesSchema(schema, entity);
+					this._verifyEntityMatchesSchema(schema, entity);
 
-				const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+					const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
 
-				if (entity.id == null) {
-					throw log.error("writeUpsert but no id is specified", { entity, schema });
-				}
+					if (entity.id == null) {
+						throw log.error("writeUpsert but no id is specified", { entity, schema });
+					}
 
-				return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-					.then((writeResponse) => {
-						//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
-						writeResponse.entity.data = undefined;
-						this._processDbResponse_Write(schema, writeResponse, entity);
-						return Promise.resolve({ schema, entity });
-					});
-
+					return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
+						.then((writeResponse) => {
+							//delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
+							writeResponse.entity.data = undefined;
+							this._processDbResponse_Write(schema, writeResponse, entity);
+							return Promise.resolve({ schema, entity });
+						});
+				});
 			}
 			/**
 			 *  a successfull delete will set entity.dbResult.exists=false.  but will not delete the entity.id value.
@@ -1604,33 +1639,33 @@ export module datastore {
 			 * @param transaction
 			 */
 			public writeDelete<TEntity extends IEntity<any>>(schema: _ds.ISchema, entity: TEntity, transaction?: EzTransaction): Promise<IEzOrmResult<TEntity>> {
-				var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
+				return Promise.try(() => {
+					var connection: _EzConnectionBase<any> = transaction == null ? this._ezDatastore as any : transaction as any;
 
-				this._verifyEntityMatchesSchema(schema, entity);
+					this._verifyEntityMatchesSchema(schema, entity);
 
-				if (entity.id == null) {
-					throw log.error("writeDelete but no id is specified", { entity, schema });
-				}
+					if (entity.id == null) {
+						throw log.error("writeDelete but no id is specified", { entity, schema });
+					}
 
-				return connection.deleteEz(entity.kind, entity.id, entity.namespace)
-					.then((deleteResponse) => {
+					return connection.deleteEz(entity.kind, entity.id, entity.namespace)
+						.then((deleteResponse) => {
 
-						//if (entity.id == null) {
-						//	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
-						//}
+							//if (entity.id == null) {
+							//	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
+							//}
 
-						//entity.id = undefined;
-						entity.dbResult = {
-							dbEntity: undefined,
-							exists: false,
-							lastApiResponse: deleteResponse.apiResponse,
-						};
+							//entity.id = undefined;
+							entity.dbResult = {
+								dbEntity: undefined,
+								exists: false,
+								lastApiResponse: deleteResponse.apiResponse,
+							};
 
-						return Promise.resolve({ schema, entity });
-					});
+							return Promise.resolve({ schema, entity });
+						});
+				});
 			}
-
-
 
 
 		}
