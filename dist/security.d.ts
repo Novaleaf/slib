@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import xlib = require("xlib");
 import Promise = xlib.promise.bluebird;
 /** definition of argon2 options, a KDF implementation */
