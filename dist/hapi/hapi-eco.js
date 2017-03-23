@@ -1,5 +1,6 @@
 "use strict";
-const xlib = require("xlib");
+Object.defineProperty(exports, "__esModule", { value: true });
+var xlib = require("xlib");
 var log = new xlib.logging.Logger(__filename);
 //import Url = require("url");
 /** the main hapi library.  >=12.x  */
@@ -31,14 +32,17 @@ exports.connection = require("./connection");
  *
  * @param request
  */
-function extractClientIpBareOrGCloudHttpLoadBalancer(request, forwardingSteps = 2, proxyIfRemoteAddressStartsWith = "130.211", ipIfInvalid = "0.0.0.0") {
+function extractClientIpBareOrGCloudHttpLoadBalancer(request, forwardingSteps, proxyIfRemoteAddressStartsWith, ipIfInvalid) {
+    if (forwardingSteps === void 0) { forwardingSteps = 2; }
+    if (proxyIfRemoteAddressStartsWith === void 0) { proxyIfRemoteAddressStartsWith = "130.211"; }
+    if (ipIfInvalid === void 0) { ipIfInvalid = "0.0.0.0"; }
     if (request.info.remoteAddress.indexOf(proxyIfRemoteAddressStartsWith) === 0) {
         try {
-            let xFF = request.headers['x-forwarded-for'];
+            var xFF = request.headers['x-forwarded-for'];
             if (xFF != null) {
-                let xFFSplit = xFF.split(',');
-                let targetHop = xFFSplit.length - forwardingSteps;
-                let ip = xFFSplit[targetHop];
+                var xFFSplit = xFF.split(',');
+                var targetHop = xFFSplit.length - forwardingSteps;
+                var ip = xFFSplit[targetHop];
                 return ip;
             }
             return request.info.remoteAddress;
@@ -69,26 +73,33 @@ function ezRouteConfigAuthRequired(path,
     /** you should send successful results via .reply().   failures are automatically handled when you return a rejected promise */
     handlerPromise, 
     /** default = ["POST"]*/
-    method = ["POST"], 
+    method, 
     /** default = { payload: { output: "data", parse: "gunzip" } } */
-    config = {
-        payload: { output: "data", parse: "gunzip" }
-    }, 
+    config, 
     /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
-    doHandlerOnHeadRequests = false) {
-    let toReturn = {
-        method,
-        path,
-        config,
-        handler: (request, reply) => {
-            log.debug("ezRouteConfigAuthRequired got request", { path, request: requestToJson(request) });
+    doHandlerOnHeadRequests) {
+    /** default = ["POST"]*/
+    if (method === void 0) { method = ["POST"]; }
+    /** default = { payload: { output: "data", parse: "gunzip" } } */
+    if (config === void 0) { config = {
+        payload: { output: "data", parse: "gunzip" }
+        //auth: false, //don't require login
+    }; }
+    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
+    if (doHandlerOnHeadRequests === void 0) { doHandlerOnHeadRequests = false; }
+    var toReturn = {
+        method: method,
+        path: path,
+        config: config,
+        handler: function (request, reply) {
+            log.debug("ezRouteConfigAuthRequired got request", { path: path, request: requestToJson(request) });
             if (request.method === "head" && doHandlerOnHeadRequests === false) {
                 reply("");
                 return;
             }
-            let credentials = request.auth.credentials;
+            var credentials = request.auth.credentials;
             handlerPromise(request, reply, credentials)
-                .then((promisePayload) => {
+                .then(function (promisePayload) {
                 //success
                 if (reply._replied == null) {
                     throw log.error("the IReply._replied property is/was an undocumented feature of Hapi 8.x, which informs the state of the reply.   it is now missing!??  figure out a replacement");
@@ -97,13 +108,14 @@ function ezRouteConfigAuthRequired(path,
                     //response not yet set
                     if (request.method === "head") {
                         reply("");
+                        //return;
                     }
                     else {
-                        let response = reply(promisePayload);
+                        var response = reply(promisePayload);
                     }
                 }
-            }, (errExecutingHandler) => {
-                let replyBody = {
+            }, function (errExecutingHandler) {
+                var replyBody = {
                     message: "Error invoking endpoint path=" + request.url.path,
                     statusCode: 500,
                 };
@@ -116,7 +128,7 @@ function ezRouteConfigAuthRequired(path,
                 log.warn(replyBody, errExecutingHandler);
                 var response = reply(replyBody).code(replyBody.statusCode);
             })
-                .catch((err) => {
+                .catch(function (err) {
                 console.log("ERROR in hapi eco", err.toString());
             });
         },
@@ -129,8 +141,9 @@ exports.ezRouteConfigAuthRequired = ezRouteConfigAuthRequired;
  * construct a POJO object from the request, suitable for logging
  * @param request
  */
-function requestToJson(request, options = {}) {
-    let hapiRequestLogs;
+function requestToJson(request, options) {
+    if (options === void 0) { options = {}; }
+    var hapiRequestLogs;
     try {
         if (options.verboseRequestLogs === true) {
             hapiRequestLogs = request.getLog();
@@ -174,38 +187,45 @@ function ezRouteConfigNoAuth(path,
     /** you should send successful results via .reply().   failures are automatically handled when you return a rejected promise */
     handlerPromise, 
     /** default = ["POST"]*/
-    method = ["POST"], 
+    method, 
     /** default = { payload: { output: "data", parse: "gunzip" },auth: false } */
-    config = {
+    config, 
+    /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
+    doHandlerOnHeadRequests) {
+    /** default = ["POST"]*/
+    if (method === void 0) { method = ["POST"]; }
+    /** default = { payload: { output: "data", parse: "gunzip" },auth: false } */
+    if (config === void 0) { config = {
         payload: { output: "data", parse: "gunzip" },
         auth: false,
-    }, 
+    }; }
     /** if false (the default) we return 200 success immediatly on HEAD requests.   however, you are supposed to return identical headers for GET and HEAD, so probably you want to set headers via your handler. */
-    doHandlerOnHeadRequests = false) {
-    let toReturn = {
-        method,
-        path,
-        config,
-        handler: (request, reply) => {
-            log.debug("ezRouteConfigNoAuth got request", { path, request: requestToJson(request) });
+    if (doHandlerOnHeadRequests === void 0) { doHandlerOnHeadRequests = false; }
+    var toReturn = {
+        method: method,
+        path: path,
+        config: config,
+        handler: function (request, reply) {
+            log.debug("ezRouteConfigNoAuth got request", { path: path, request: requestToJson(request) });
             if (request.method === "head" && doHandlerOnHeadRequests === false) {
                 reply("");
                 return;
             }
             handlerPromise(request, reply)
-                .then((promisePayload) => {
+                .then(function (promisePayload) {
                 //success
                 if (reply._replied !== true) {
                     //response not yet set
                     if (request.method === "head") {
                         reply("");
+                        //return;
                     }
                     else {
-                        let response = reply(promisePayload);
+                        var response = reply(promisePayload);
                     }
                 }
-            }, (errExecutingHandler) => {
-                let replyBody = {
+            }, function (errExecutingHandler) {
+                var replyBody = {
                     message: "ENDPOINT ERROR:" + request.url.path,
                     statusCode: 500,
                 };

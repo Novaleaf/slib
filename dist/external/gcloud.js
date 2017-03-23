@@ -1,5 +1,16 @@
 "use strict";
-const xlib = require("xlib");
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var xlib = require("xlib");
 var _ = xlib.lodash;
 var __ = xlib.lolo;
 var log = new xlib.logging.Logger(__filename);
@@ -9,7 +20,7 @@ var Promise = xlib.promise.bluebird;
   docs here: https://googlecloudplatform.github.io/gcloud-node/#/docs/v0.27.0/datastore/dataset
  */
 exports.gcloud = require("google-cloud");
-let logGCloud = new xlib.logging.Logger("GCLOUD", xlib.environment.LogLevel.DEBUG);
+var logGCloud = new xlib.logging.Logger("GCLOUD", xlib.environment.LogLevel.DEBUG);
 //export module ezSchema {
 //	enum Constraints {
 //		String,
@@ -38,14 +49,14 @@ let logGCloud = new xlib.logging.Logger("GCLOUD", xlib.environment.LogLevel.DEBU
 //}
 var datastore;
 (function (datastore) {
-    class _EzConnectionBase {
-        constructor(_connection, 
+    var _EzConnectionBase = (function () {
+        function _EzConnectionBase(_connection, 
             /** for use when the dataset is explicitly  needed (constructing keys, etc) */
             assistantDatastore) {
             this._connection = _connection;
             this.assistantDatastore = assistantDatastore;
             this.isTransaction = false;
-            logGCloud.trace(`_EzConnectionBase.ctor start`);
+            logGCloud.trace("_EzConnectionBase.ctor start");
             var typeName = xlib.reflection.getTypeName(_connection);
             switch (typeName) {
                 //case "Dataset": //v 0.28
@@ -60,230 +71,239 @@ var datastore;
             }
         }
         /** Create a query from the current dataset to query the specified kind, scoped to the namespace provided at the initialization of the dataset. */
-        createQuery(namespace, kind) {
+        _EzConnectionBase.prototype.createQuery = function (namespace, kind) {
             return this._connection.createQuery(namespace, kind);
-        }
-        allocateIds(/** The key object to complete. */ incompleteKey, n) {
-            logGCloud.trace(`_EzConnectionBase.allocateIds`, { arguments });
-            return new Promise((resolve, reject) => {
-                this._connection.allocateIds(incompleteKey, n, (err, keys, apiResponse) => {
+        };
+        _EzConnectionBase.prototype.allocateIds = function (/** The key object to complete. */ incompleteKey, n) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.allocateIds", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                _this._connection.allocateIds(incompleteKey, n, function (err, keys, apiResponse) {
                     if (err != null) {
                         err.apiResponse = apiResponse;
                         return reject(err);
                     }
-                    return resolve({ keys, apiResponse });
+                    return resolve({ keys: keys, apiResponse: apiResponse });
                 });
             });
-        }
-        delete(key) {
-            logGCloud.trace(`_EzConnectionBase.delete`, { arguments });
-            return new Promise((resolve, reject) => {
-                this._connection.delete(key, (err, apiResponse) => {
+        };
+        _EzConnectionBase.prototype.delete = function (key) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.delete", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                _this._connection.delete(key, function (err, apiResponse) {
                     if (err != null) {
                         err.apiResponse = apiResponse;
                         return reject(err);
                     }
-                    return resolve({ apiResponse });
+                    return resolve({ apiResponse: apiResponse });
                 });
             });
-        }
-        deleteEz(kind, idOrName, namespace) {
-            let path = [kind];
+        };
+        _EzConnectionBase.prototype.deleteEz = function (kind, idOrName, namespace) {
+            var path = [kind];
             if (idOrName != null) {
                 path.push(idOrName);
             }
-            let keyObj = this.assistantDatastore.key({ path, namespace });
+            var keyObj = this.assistantDatastore.key({ path: path, namespace: namespace });
             return this.delete(keyObj);
-        }
-        get(keyOrKeys) {
-            logGCloud.trace(`_EzConnectionBase.get`, { arguments });
-            return new Promise((resolve, reject) => {
+        };
+        _EzConnectionBase.prototype.get = function (keyOrKeys) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.get", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
                 if (_.isArray(keyOrKeys) === true) {
                     //handle case an array of keys is passed
-                    const keys = keyOrKeys;
-                    this._connection.get(keys, (err, datas, apiResponse) => {
+                    var keys_1 = keyOrKeys;
+                    _this._connection.get(keys_1, function (err, datas, apiResponse) {
                         if (err != null) {
                             //err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
                             err.apiResponse = apiResponse;
                             return reject(err);
                         }
-                        let entities = [];
-                        __.forEach(keys, (key, index) => {
-                            let entity = {
-                                key,
+                        var entities = [];
+                        __.forEach(keys_1, function (key, index) {
+                            var entity = {
+                                key: key,
                                 data: datas[index],
                             };
                             entities.push(entity);
                         });
-                        let toReturn = { readResult: entities, apiResponse };
+                        var toReturn = { readResult: entities, apiResponse: apiResponse };
                         return resolve(toReturn);
                     });
                 }
                 else {
                     //handle case a single key is passed
-                    const key = keyOrKeys;
-                    this._connection.get(key, (err, data, apiResponse) => {
+                    var key_1 = keyOrKeys;
+                    _this._connection.get(key_1, function (err, data, apiResponse) {
                         if (err != null) {
                             //err.code=503 err.message="Service Unavailable - Backend Error" //reason: missing projectId
                             err.apiResponse = apiResponse;
                             return reject(err);
                         }
-                        let entity = {
-                            key,
-                            data,
+                        var entity = {
+                            key: key_1,
+                            data: data,
                         };
-                        let toReturn = { readResult: entity, apiResponse };
+                        var toReturn = { readResult: entity, apiResponse: apiResponse };
                         return resolve(toReturn);
                     });
                 }
             });
-        }
-        getEz(kind, idOrName, namespace) {
-            let path = [kind];
+        };
+        _EzConnectionBase.prototype.getEz = function (kind, idOrName, namespace) {
+            var path = [kind];
             if (idOrName != null) {
                 path.push(idOrName);
             }
-            let keyObj = this.assistantDatastore.key({ path, namespace });
+            var keyObj = this.assistantDatastore.key({ path: path, namespace: namespace });
             return this.get(keyObj)
-                .then((readResult) => {
+                .then(function (readResult) {
                 return Promise.resolve({ entity: readResult.readResult, apiResponse: readResult.apiResponse });
             });
-        }
-        insertEz(kind, idOrName, data, namespace) {
-            let path = [kind];
+        };
+        _EzConnectionBase.prototype.insertEz = function (kind, idOrName, data, namespace) {
+            var path = [kind];
             if (idOrName != null) {
                 path.push(idOrName);
             }
-            let keyObj = this.assistantDatastore.key({ path, namespace });
-            let entity = {
+            var keyObj = this.assistantDatastore.key({ path: path, namespace: namespace });
+            var entity = {
                 key: keyObj,
                 data: data,
             };
-            return this.insert(entity).then((apiResponse) => {
-                return { entity, apiResponse };
+            return this.insert(entity).then(function (apiResponse) {
+                return { entity: entity, apiResponse: apiResponse };
             });
-        }
-        updateEz(kind, idOrName, data, namespace) {
-            let path = [kind];
+        };
+        _EzConnectionBase.prototype.updateEz = function (kind, idOrName, data, namespace) {
+            var path = [kind];
             if (idOrName != null) {
                 path.push(idOrName);
             }
-            let keyObj = this.assistantDatastore.key({ path, namespace });
-            let entity = {
+            var keyObj = this.assistantDatastore.key({ path: path, namespace: namespace });
+            var entity = {
                 key: keyObj,
                 data: data,
             };
-            return this.update(entity).then((apiResponse) => {
-                return { entity, apiResponse };
+            return this.update(entity).then(function (apiResponse) {
+                return { entity: entity, apiResponse: apiResponse };
             });
-        }
-        upsertEz(kind, idOrName, data, namespace) {
-            let path = [kind];
+        };
+        _EzConnectionBase.prototype.upsertEz = function (kind, idOrName, data, namespace) {
+            var path = [kind];
             if (idOrName != null) {
                 path.push(idOrName);
             }
-            let keyObj = this.assistantDatastore.key({ path, namespace });
-            let entity = {
+            var keyObj = this.assistantDatastore.key({ path: path, namespace: namespace });
+            var entity = {
                 key: keyObj,
                 data: data,
             };
-            return this.upsert(entity).then((apiResponse) => {
-                return { entity, apiResponse };
+            return this.upsert(entity).then(function (apiResponse) {
+                return { entity: entity, apiResponse: apiResponse };
             });
-        }
-        runQuery(q) {
-            logGCloud.trace(`_EzConnectionBase.runQuery`, { arguments });
-            return new Promise((resolve, reject) => {
-                this._connection.runQuery(q, (err, entities, nextQuery, apiResponse) => {
+        };
+        _EzConnectionBase.prototype.runQuery = function (q) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.runQuery", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                _this._connection.runQuery(q, function (err, entities, nextQuery, apiResponse) {
                     if (err != null) {
                         err.apiResponse = apiResponse;
                         return reject(err);
                     }
-                    return resolve({ entities, nextQuery, apiResponse });
+                    return resolve({ entities: entities, nextQuery: nextQuery, apiResponse: apiResponse });
                 });
             });
-        }
-        insert(entity) {
-            logGCloud.trace(`_EzConnectionBase.insert`, { arguments });
-            return new Promise((resolve, reject) => {
-                if (this.isTransaction === true) {
+        };
+        _EzConnectionBase.prototype.insert = function (entity) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.insert", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                if (_this.isTransaction === true) {
                     //transaction doesn't have callback... annoying!
-                    this._connection.insert(entity, (err, apiResponse) => { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err, apiResponse })); });
+                    _this._connection.insert(entity, function (err, apiResponse) { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err: err, apiResponse: apiResponse })); });
                     return resolve();
                 }
                 else {
-                    this._connection.insert(entity, (err, apiResponse) => {
+                    _this._connection.insert(entity, function (err, apiResponse) {
                         if (err != null) {
                             err.apiResponse = apiResponse;
                             return reject(err);
                         }
-                        return resolve({ apiResponse });
+                        return resolve({ apiResponse: apiResponse });
                     });
                 }
             });
-        }
-        save(entity) {
-            logGCloud.trace(`_EzConnectionBase.save`, { arguments });
-            return new Promise((resolve, reject) => {
-                if (this.isTransaction === true) {
+        };
+        _EzConnectionBase.prototype.save = function (entity) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.save", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                if (_this.isTransaction === true) {
                     //transaction doesn't have callback... annoying!
-                    this._connection.save(entity, (err, apiResponse) => { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err, apiResponse })); });
+                    _this._connection.save(entity, function (err, apiResponse) { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err: err, apiResponse: apiResponse })); });
                     return resolve();
                 }
                 else {
-                    this._connection.save(entity, (err, apiResponse) => {
+                    _this._connection.save(entity, function (err, apiResponse) {
                         if (err != null) {
                             err.apiResponse = apiResponse;
                             return reject(err);
                         }
-                        return resolve({ apiResponse });
+                        return resolve({ apiResponse: apiResponse });
                     });
                 }
             });
-        }
-        update(entity) {
-            logGCloud.trace(`_EzConnectionBase.update`, { arguments });
-            return new Promise((resolve, reject) => {
-                if (this.isTransaction === true) {
+        };
+        _EzConnectionBase.prototype.update = function (entity) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.update", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                if (_this.isTransaction === true) {
                     //transaction doesn't have callback... annoying!
-                    this._connection.update(entity, (err, apiResponse) => { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err, apiResponse })); });
+                    _this._connection.update(entity, function (err, apiResponse) { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err: err, apiResponse: apiResponse })); });
                     return resolve();
                 }
                 else {
-                    this._connection.update(entity, (err, apiResponse) => {
+                    _this._connection.update(entity, function (err, apiResponse) {
                         if (err != null) {
                             err.apiResponse = apiResponse;
                             return reject(err);
                         }
-                        return resolve({ apiResponse });
+                        return resolve({ apiResponse: apiResponse });
                     });
                 }
             });
-        }
-        upsert(entity) {
-            logGCloud.trace(`_EzConnectionBase.upsert`, { arguments });
-            return new Promise((resolve, reject) => {
-                if (this.isTransaction === true) {
+        };
+        _EzConnectionBase.prototype.upsert = function (entity) {
+            var _this = this;
+            logGCloud.trace("_EzConnectionBase.upsert", { arguments: arguments });
+            return new Promise(function (resolve, reject) {
+                if (_this.isTransaction === true) {
                     //transaction doesn't have callback... annoying!
-                    this._connection.upsert(entity, (err, apiResponse) => { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err, apiResponse })); });
+                    _this._connection.upsert(entity, function (err, apiResponse) { throw new xlib.exception.Exception("api changed?  transaction's are supposed to not have callbacks." + __.JSONX.inspectStringify({ err: err, apiResponse: apiResponse })); });
                     return resolve();
                 }
                 else {
-                    this._connection.upsert(entity, (err, apiResponse) => {
+                    _this._connection.upsert(entity, function (err, apiResponse) {
                         if (err != null) {
                             err.apiResponse = apiResponse;
                             return reject(err);
                         }
-                        return resolve({ apiResponse });
+                        return resolve({ apiResponse: apiResponse });
                     });
                 }
             });
-        }
-    }
+        };
+        return _EzConnectionBase;
+    }());
     datastore._EzConnectionBase = _EzConnectionBase;
     /** DEPRECATED:  use EzOrm instead*/
-    class __EzEntity_DEPRECATED {
-        constructor(_ezDatastore, options, 
+    var __EzEntity_DEPRECATED = (function () {
+        function __EzEntity_DEPRECATED(_ezDatastore, options, 
             /** can be undefined if using a numeric ID, in that case the ID will be auto-assigned on the server.  this is updated whenever we read from the datastore server */
             idOrName, 
             /** if passed, we will clone this and populate the .data value with it*/
@@ -304,138 +324,151 @@ var datastore;
          *  helper to properly apply our index status to fields
          * @param instrumentedData
          */
-        _convertInstrumentedEntityDataToData(instrumentedData) {
+        __EzEntity_DEPRECATED.prototype._convertInstrumentedEntityDataToData = function (instrumentedData) {
             if (instrumentedData == null) {
                 throw log.error("instrumentedData is null");
+                //return null;
             }
             log.assert(_.isArray(instrumentedData));
-            let toReturn = {};
-            _.forEach(instrumentedData, (item) => {
+            var toReturn = {};
+            _.forEach(instrumentedData, function (item) {
                 toReturn[item.name] = item.value;
             });
             return toReturn;
-        }
+        };
         /**
          * helper to properly apply our index status to fields
          * @param data
          */
-        _convertDataToInstrumentedEntityData(data) {
-            let toReturn = [];
-            let keys = Object.keys(data);
-            _.forEach(keys, (key) => {
+        __EzEntity_DEPRECATED.prototype._convertDataToInstrumentedEntityData = function (data) {
+            var _this = this;
+            var toReturn = [];
+            var keys = Object.keys(data);
+            _.forEach(keys, function (key) {
                 toReturn.push({
                     name: key,
                     value: data[key],
-                    excludeFromIndexes: (this.options.excludeFromIndexes != null && this.options.excludeFromIndexes[key] === true) ? true : undefined,
+                    excludeFromIndexes: (_this.options.excludeFromIndexes != null && _this.options.excludeFromIndexes[key] === true) ? true : undefined,
                 });
             });
             return toReturn;
-        }
+        };
         /**
          *  create a query for entities of this kind.  (not related to this key, just a shortcut to dataset.connection.createQuery)
          */
-        _query_create() {
+        __EzEntity_DEPRECATED.prototype._query_create = function () {
             //let namespace = this._ezDataset.connection.namespace;
             //let query = this._ezDataset.connection.createQuery( this.incompletePath[ 0 ] );
-            let query = this._ezDatastore.createQuery(this.options.namespace, this.options.kind);
+            var query = this._ezDatastore.createQuery(this.options.namespace, this.options.kind);
             //query.
             //var connection: _EzConnectionBase<any> = transaction == null ? this._ezDataset as any : transaction as any;
             return query;
-        }
+        };
         /**
          * using the id/name supplied in the constructor, will retrieve the associated entity from the datastore, reading the results into this instance.
          * if the entity doesn't exist, the entity.data will be null.
          * @param transaction if you want this work to be done inside a transaction, pass it here
          */
-        _read_get(transaction) {
+        __EzEntity_DEPRECATED.prototype._read_get = function (transaction) {
+            var _this = this;
             var connection = transaction == null ? this._ezDatastore : transaction;
             var resultPromise = connection.getEz(this.options.kind, this.idOrName, this.options.namespace)
-                .then(({ entity, apiResponse }) => {
+                .then(function (_a) {
+                var entity = _a.entity, apiResponse = _a.apiResponse;
                 //log.debug("EzEntity.read_get", entity, this);
-                this._processEntityFromServer(entity);
+                _this._processEntityFromServer(entity);
                 //if (entity == null) {
                 //    return Promise.reject(new Error(`_read_get() failed:  entity for path "${this.incompletePath.join()} + ${this.idOrName}" does not exist`));
                 //}
-                let result = { ezEntity: this, apiResponse };
+                var result = { ezEntity: _this, apiResponse: apiResponse };
                 return Promise.resolve(result);
             });
             return resultPromise;
-        }
+        };
         /**
          * same as ._read_get() but will return a rejected Promise if the entity does not exists.   (._read_get() returns null data on not exists)
          * @param transaction
          */
-        _read_get_mustExist(transaction) {
+        __EzEntity_DEPRECATED.prototype._read_get_mustExist = function (transaction) {
+            var _this = this;
             return this._read_get(transaction)
-                .then((readResponse) => {
+                .then(function (readResponse) {
                 if (readResponse.ezEntity.data == null) {
-                    return Promise.reject(new Error(`_read_get() failed:  entity for path "${this.options.kind} + ${this.idOrName}" in namespace "${this.options.namespace}" does not exist`));
+                    return Promise.reject(new Error("_read_get() failed:  entity for path \"" + _this.options.kind + " + " + _this.idOrName + "\" in namespace \"" + _this.options.namespace + "\" does not exist"));
                 }
                 else {
                     return Promise.resolve(readResponse);
                 }
             });
-        }
-        _write_insert(data, transaction) {
+        };
+        __EzEntity_DEPRECATED.prototype._write_insert = function (data, transaction) {
+            var _this = this;
             var connection = transaction == null ? this._ezDatastore : transaction;
             data = this._convertDataToInstrumentedEntityData(data); //HACK convert but keep type flow
             log.assert(this._rawEntity == null, "already has an entity, why?");
             return connection.insertEz(this.options.kind, this.idOrName, data, this.options.namespace)
-                .then(({ entity, apiResponse }) => {
+                .then(function (_a) {
+                var entity = _a.entity, apiResponse = _a.apiResponse;
                 //var oldData = _.clone(this.data);
-                this._processEntityFromServer(entity);
-                let result = { ezEntity: this, apiResponse };
+                _this._processEntityFromServer(entity);
+                var result = { ezEntity: _this, apiResponse: apiResponse };
                 //log.debug("EzEntity.write_insert", result);
                 return Promise.resolve(result);
             });
-        }
-        _write_update(data, transaction) {
+        };
+        __EzEntity_DEPRECATED.prototype._write_update = function (data, transaction) {
+            var _this = this;
             var connection = transaction == null ? this._ezDatastore : transaction;
             data = this._convertDataToInstrumentedEntityData(data); //HACK convert but keep type flow
             if (this.idOrName == null) {
                 throw log.error("id is not set");
             }
             return connection.updateEz(this.options.kind, this.idOrName, data, this.options.namespace)
-                .then(({ entity, apiResponse }) => {
+                .then(function (_a) {
+                var entity = _a.entity, apiResponse = _a.apiResponse;
                 //var oldData = _.clone(this.data);
-                this._processEntityFromServer(entity);
-                let result = { ezEntity: this, apiResponse };
+                _this._processEntityFromServer(entity);
+                var result = { ezEntity: _this, apiResponse: apiResponse };
                 //log.debug("EzEntity.write_update", result);
                 return Promise.resolve(result);
             });
-        }
-        _write_upsert(data, transaction) {
+        };
+        __EzEntity_DEPRECATED.prototype._write_upsert = function (data, transaction) {
+            var _this = this;
             var connection = transaction == null ? this._ezDatastore : transaction;
             data = this._convertDataToInstrumentedEntityData(data); //HACK convert but keep type flow
             return connection.upsertEz(this.options.kind, this.idOrName, data, this.options.namespace)
-                .then(({ entity, apiResponse }) => {
+                .then(function (_a) {
+                var entity = _a.entity, apiResponse = _a.apiResponse;
                 //var oldData = _.clone(this.data);
-                this._processEntityFromServer(entity);
-                let result = { ezEntity: this, apiResponse };
+                _this._processEntityFromServer(entity);
+                var result = { ezEntity: _this, apiResponse: apiResponse };
                 //log.debug("EzEntity.write_upsert", result);
                 return Promise.resolve(result);
             });
-        }
-        _write_delete(transaction) {
+        };
+        __EzEntity_DEPRECATED.prototype._write_delete = function (transaction) {
+            var _this = this;
             var connection = transaction == null ? this._ezDatastore : transaction;
             if (this.idOrName == null) {
                 throw log.error("can not delete.  id is not set");
             }
             return connection.deleteEz(this.options.kind, this.idOrName, this.options.namespace)
-                .then(({ apiResponse }) => {
+                .then(function (_a) {
+                var apiResponse = _a.apiResponse;
                 //var oldData = _.clone(this.data);
-                this._processEntityFromServer(null);
-                let result = { ezEntity: this, apiResponse };
+                _this._processEntityFromServer(null);
+                var result = { ezEntity: _this, apiResponse: apiResponse };
                 //log.debug("EzEntity.write_delete", result);
                 return Promise.resolve(result);
             });
-        }
+        };
         //public write_upsert(d
         /**
          * updates this ezEntity with values from a server, overwriting existing values in this object, but doesn't contact the datastore.
          * @param entity
          */
-        _processEntityFromServer(entity) {
+        __EzEntity_DEPRECATED.prototype._processEntityFromServer = function (entity) {
             if (entity == null || entity.data == null) {
                 this.data = null;
             }
@@ -461,40 +494,48 @@ var datastore;
                     this.idOrName = this._rawEntity.key.name;
                 }
             }
-        }
-    }
+        };
+        return __EzEntity_DEPRECATED;
+    }());
     datastore.__EzEntity_DEPRECATED = __EzEntity_DEPRECATED;
-    class EzDatastore extends _EzConnectionBase {
-        constructor(dataset) {
-            super(dataset, dataset);
+    var EzDatastore = (function (_super) {
+        __extends(EzDatastore, _super);
+        function EzDatastore(dataset) {
+            return _super.call(this, dataset, dataset) || this;
         }
         /**
          * DEPRECATED: while functional, the workflow is wonky.   favor the promise based ".runInTransaction()" instead.
          * @param fn
          */
-        _runInTransaction_DEPRECATED(
+        EzDatastore.prototype._runInTransaction_DEPRECATED = function (
             /** be aware that inside transactions (using the transaction.write() functions), write operations resolve instantly as they are not actually applied until the done() callback method is called.*/
             fn, 
             /** auto-retry if the transaction fails. default = { interval: 0, max_tries:10 }  FYI in datastore v1Beta2 each try takes aprox 1 second*/
-            retryOptions = { interval: 0, max_tries: 10 }) {
-            return xlib.promise.retry(() => {
-                return new Promise((resolve, reject) => {
-                    let _result;
+            retryOptions) {
+            var _this = this;
+            /** auto-retry if the transaction fails. default = { interval: 0, max_tries:10 }  FYI in datastore v1Beta2 each try takes aprox 1 second*/
+            if (retryOptions === void 0) { retryOptions = { interval: 0, max_tries: 10 }; }
+            return xlib.promise.retry(function () {
+                return new Promise(function (resolve, reject) {
+                    var _result;
                     ////////////////////////////////
                     // v0.40 implementation
-                    let baseTransaction = this._connection.transaction();
-                    baseTransaction.run((err, base_normalTransaction, apiResponse) => {
-                        let newEzTransaction = new EzTransaction(base_normalTransaction, this._connection);
+                    var baseTransaction = _this._connection.transaction();
+                    baseTransaction.run(function (err, base_normalTransaction, apiResponse) {
+                        var newEzTransaction = new EzTransaction(base_normalTransaction, _this._connection);
                         try {
-                            return fn(newEzTransaction, (result) => {
+                            return fn(newEzTransaction, function (result) {
                                 _result = result;
-                                base_normalTransaction.commit((err, apiResponse) => {
+                                base_normalTransaction.commit(function (err, apiResponse) {
                                     if (err != null) {
                                         return reject(new DatastoreException("Transaction.Commit() failed.  Probably RolledBack or conflicting change occurred asynchronously.  \tapiResponse=" + __.JSONX.inspectStringify(apiResponse), err));
                                     }
                                     return resolve(_result);
                                 });
                             });
+                            //.catch((err) => {
+                            //	return newEzTransaction.rollback();
+                            //});
                         }
                         catch (ex) {
                             log.debug("CATCH THROW IN .runInTransaction()", ex);
@@ -526,36 +567,39 @@ var datastore;
                     //	});
                 });
             }, retryOptions);
-        }
+        };
         /**
          * promise based transaction.
          * @param userFunction
          * @param retryOptions
          */
-        runInTransaction(
+        EzDatastore.prototype.runInTransaction = function (
             /** return a promise that resolves to commit the transaction.   return a rejected to rollback.
             IMPORTANT NOTE: be aware that inside transactions (using the transaction.write() functions), write operations resolve instantly as they are not actually applied until the done() callback method is called.
              */
             userFunction, 
             /** auto-retry if the transaction fails. default = { interval: 0, max_tries:10 }  FYI in datastore v1Beta2 each try takes aprox 1 second*/
-            retryOptions = { interval: 0, max_tries: 10 }) {
-            return xlib.promise.retry(() => {
+            retryOptions) {
+            var _this = this;
+            /** auto-retry if the transaction fails. default = { interval: 0, max_tries:10 }  FYI in datastore v1Beta2 each try takes aprox 1 second*/
+            if (retryOptions === void 0) { retryOptions = { interval: 0, max_tries: 10 }; }
+            return xlib.promise.retry(function () {
                 //log.info("runInTransaction(), top retry block: ENTER");
-                return new Promise((resolve, reject) => {
-                    let _result;
-                    let _explicitUserRejectionError;
+                return new Promise(function (resolve, reject) {
+                    var _result;
+                    var _explicitUserRejectionError;
                     //////////////////////
                     //v0.40 implementation
-                    let baseTransaction = this._connection.transaction();
-                    baseTransaction.run((err, base_normalTransaction, apiResponse) => {
-                        let newEzTransaction = new EzTransaction(base_normalTransaction, this._connection);
-                        Promise.try(() => {
+                    var baseTransaction = _this._connection.transaction();
+                    baseTransaction.run(function (err, base_normalTransaction, apiResponse) {
+                        var newEzTransaction = new EzTransaction(base_normalTransaction, _this._connection);
+                        Promise.try(function () {
                             return userFunction(newEzTransaction);
                         })
-                            .then((doneResult) => {
+                            .then(function (doneResult) {
                             _result = doneResult;
                             //need to call base_done() otherwise the outer-callback will never complete.
-                            base_normalTransaction.commit((err, apiResponse) => {
+                            base_normalTransaction.commit(function (err, apiResponse) {
                                 //transaction done callback
                                 //log.info("runInTransaction(), runInTransaction complete callback", { err });
                                 //this section is the gcloud transaction callback
@@ -568,18 +612,18 @@ var datastore;
                                 }
                                 return resolve(_result);
                             });
-                        }, (errUserFcnWantsToRollBack) => {
+                        }, function (errUserFcnWantsToRollBack) {
                             //log.info("runInTransaction(), userFcn wants to roll back");
                             _explicitUserRejectionError = errUserFcnWantsToRollBack;
-                            return xlib.promise.retry(() => {
+                            return xlib.promise.retry(function () {
                                 //log.info("runInTransaction(), in rollback retry block");
                                 return newEzTransaction.__rollbackHelper_INTERNAL();
                             }, { max_tries: 3 })
-                                .then(() => {
+                                .then(function () {
                                 //log.info("runInTransaction(), finished rollback successfully");
                                 //return Promise.resolve();
                                 return reject(new xlib.promise.retry.StopError(_explicitUserRejectionError));
-                            }, (errRollbackTotalFailure) => {
+                            }, function (errRollbackTotalFailure) {
                                 //log.error("total failure rolling back", userFunction, errUserFcnWantsToRollBack, errRollbackTotalFailure);
                                 //return Promise.resolve();
                                 return reject(new xlib.promise.retry.StopError(_explicitUserRejectionError));
@@ -631,39 +675,51 @@ var datastore;
                     //	});
                 });
             }, retryOptions);
-        }
-    }
+        };
+        return EzDatastore;
+    }(_EzConnectionBase));
     datastore.EzDatastore = EzDatastore;
     /**
      * created by invoking EzDataset.runInTransaction
      * be aware that inside transactions, write operations resolve instantly as they are not actually applied until the done() callback method is called.
      */
-    class EzTransaction extends _EzConnectionBase {
+    var EzTransaction = (function (_super) {
+        __extends(EzTransaction, _super);
+        function EzTransaction() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
         /**
      *  return this as a rejection of the transaction to prevent retries.
      * @param messageOrInnerError
      */
-        newStopError(messageOrInnerError) {
+        EzTransaction.prototype.newStopError = function (messageOrInnerError) {
             return new xlib.promise.retry.StopError(messageOrInnerError);
-        }
+        };
         /**
          * if you use the promise based tranasctions (which you should!) you should never manually need to call this.
         simply wraps the rollback() method in a promise, resolving when the rollback succeeds, rejects when rollback fails.
          */
-        __rollbackHelper_INTERNAL() {
-            return new Promise((resolve, reject) => {
-                this._connection.rollback((err, apiResponse) => {
+        EzTransaction.prototype.__rollbackHelper_INTERNAL = function () {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                _this._connection.rollback(function (err, apiResponse) {
                     if (err != null) {
                         return reject(new DatastoreException("Transaction.Rollback() failed.  \tapiResponse=" + __.JSONX.inspectStringify(apiResponse), err));
                     }
-                    return resolve({ apiResponse });
+                    return resolve({ apiResponse: apiResponse });
                 });
             });
-        }
-    }
+        };
+        return EzTransaction;
+    }(_EzConnectionBase));
     datastore.EzTransaction = EzTransaction;
-    class DatastoreException extends xlib.exception.Exception {
-    }
+    var DatastoreException = (function (_super) {
+        __extends(DatastoreException, _super);
+        function DatastoreException() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
+        return DatastoreException;
+    }(xlib.exception.Exception));
     datastore.DatastoreException = DatastoreException;
     ;
     /**
@@ -675,8 +731,8 @@ var datastore;
          * handle ORM calls based on a given Schema (ISchema) and entity (IEntity of type TData).
          * todo: describe errors+error handling better: https://cloud.google.com/datastore/docs/concepts/errors
          */
-        class EzOrm {
-            constructor(_ezDatastore) {
+        var EzOrm = (function () {
+            function EzOrm(_ezDatastore) {
                 this._ezDatastore = _ezDatastore;
             }
             /**
@@ -684,14 +740,14 @@ var datastore;
              * @param schema
              * @param namespace
              */
-            ezConstructEntity(schema, namespace, id) {
+            EzOrm.prototype.ezConstructEntity = function (schema, namespace, id) {
                 //convert a data object of the proper type
-                let schemaData = {};
-                __.forEach(schema.properties, (prop, key) => {
+                var schemaData = {};
+                __.forEach(schema.properties, function (prop, key) {
                     schemaData[key] = prop.default;
                 });
                 //construct the entity to return
-                let toReturn = {
+                var toReturn = {
                     dbResult: undefined,
                     id: id,
                     kind: schema.db.kind,
@@ -699,11 +755,11 @@ var datastore;
                     data: schemaData,
                 };
                 return toReturn;
-            }
-            _processDbResponse_KeyHelper(schema, dbResponse, entity) {
-                log.errorAndThrowIfFalse(entity != null && dbResponse.entity != null && dbResponse.entity.key != null, "required obj is missing.  (entity or dbResponse.entity.key)", { entity, dbResponse });
-                log.errorAndThrowIfFalse(entity.id == null || entity.id === dbResponse.entity.key.id, "id already exists, why does it change?", { entity, dbResponse });
-                log.errorAndThrowIfFalse(schema.db.kind === dbResponse.entity.key.kind, "why is kind different?", { schema, dbResponse });
+            };
+            EzOrm.prototype._processDbResponse_KeyHelper = function (schema, dbResponse, entity) {
+                log.errorAndThrowIfFalse(entity != null && dbResponse.entity != null && dbResponse.entity.key != null, "required obj is missing.  (entity or dbResponse.entity.key)", { entity: entity, dbResponse: dbResponse });
+                log.errorAndThrowIfFalse(entity.id == null || entity.id === dbResponse.entity.key.id, "id already exists, why does it change?", { entity: entity, dbResponse: dbResponse });
+                log.errorAndThrowIfFalse(schema.db.kind === dbResponse.entity.key.kind, "why is kind different?", { schema: schema, dbResponse: dbResponse });
                 //update our fixed values from the db
                 entity.id = dbResponse.entity.key.id;
                 entity.kind = dbResponse.entity.key.kind;
@@ -712,7 +768,7 @@ var datastore;
                     lastApiResponse: dbResponse.apiResponse,
                     exists: dbResponse.entity.data != null,
                 };
-            }
+            };
             /**
              * updates the entity with only the key data from the db.  schema validation is also performed.
              * when writing the db values are not read back.  these are in IEntityInstrumentedData[] format as they are just echos of the input values
@@ -720,30 +776,30 @@ var datastore;
              * @param dbResponse
              * @param entity
              */
-            _processDbResponse_Write(schema, dbResponse, entity) {
+            EzOrm.prototype._processDbResponse_Write = function (schema, dbResponse, entity) {
                 this._processDbResponse_KeyHelper(schema, dbResponse, entity);
-            }
+            };
             /**
              *  updates the entity with values from the db.   schema validation is also performed.
              * if entity does not exist, does not delete props
              * @param schemaEntity
              * @param dbResponse
              */
-            _processDbResponse_Read(schema, dbResponse, entity) {
+            EzOrm.prototype._processDbResponse_Read = function (schema, dbResponse, entity) {
                 this._processDbResponse_KeyHelper(schema, dbResponse, entity);
                 if (entity.data == null) {
                     entity.data = {};
                 }
-                const dbData = dbResponse.entity.data;
+                var dbData = dbResponse.entity.data;
                 if (dbData != null) {
                     //exists
                     //loop through all schemaProps and if the prop is a dbType, mix it into our entity data
-                    __.forEach(schema.properties, (prop, key) => {
+                    __.forEach(schema.properties, function (prop, key) {
                         if (prop.dbType === "none") {
                             //not in the db, so don't update our entity's data value for this prop
                             return;
                         }
-                        let dbValue = dbData[key];
+                        var dbValue = dbData[key];
                         if (prop.dbReadTransform != null) {
                             dbValue = prop.dbReadTransform(dbValue);
                         }
@@ -752,7 +808,7 @@ var datastore;
                             entity.data[key] = null;
                             //prop missing in db (undefined) or null
                             if (prop.isOptional !== true && schema.db.suppressInvalidSchemaErrors !== true) {
-                                throw log.error("missing prop in dbEntity", { key, schema, entity, dbResponse, isSameRef: entity.data === dbResponse.entity.data });
+                                throw log.error("missing prop in dbEntity", { key: key, schema: schema, entity: entity, dbResponse: dbResponse, isSameRef: entity.data === dbResponse.entity.data });
                             }
                         }
                         else {
@@ -760,7 +816,7 @@ var datastore;
                             entity.data[key] = dbValue;
                             if (schema.db.suppressInvalidSchemaErrors !== true) {
                                 //compare dbType to what the schema says it should be
-                                const dbType = xlib.reflection.getType(dbValue);
+                                var dbType = xlib.reflection.getType(dbValue);
                                 switch (schema.properties[key].dbType) {
                                     case "string":
                                         log.errorAndThrowIfFalse(dbType === xlib.reflection.Type.string);
@@ -783,29 +839,31 @@ var datastore;
                                     case "none":
                                         throw log.error("dbtype set to none, should not exist in db");
                                     default:
-                                        throw log.error("unknown dbtype, need to add handling of this in the ._processDbResponse() worker fcn", { key, prop });
+                                        throw log.error("unknown dbtype, need to add handling of this in the ._processDbResponse() worker fcn", { key: key, prop: prop });
                                 }
                             }
                         }
                     });
                 }
                 else {
+                    //value doesn't exist in the database
                 }
-            }
+            };
             /**
              *  translate our data into an instrumeted "metadata" format used by google cloud datastore for writes
              * @param schema
              * @param entity
              */
-            _convertDataToInstrumentedEntityData(schema, entity) {
+            EzOrm.prototype._convertDataToInstrumentedEntityData = function (schema, entity) {
+                var _this = this;
                 //loop through schema props, extracting out dbTyped props into an instrumented array
-                const toReturn = [];
-                __.forEach(schema.properties, (prop, key) => {
+                var toReturn = [];
+                __.forEach(schema.properties, function (prop, key) {
                     //handle special prop parameters that can modify our entity prop value
                     {
-                        let tempVal = entity.data[key];
+                        var tempVal = entity.data[key];
                         if (typeof (tempVal) === "string") {
-                            let strProp = prop;
+                            var strProp = prop;
                             if (strProp.toLowercaseTrim === true) {
                                 tempVal = tempVal.toLowerCase().trim();
                             }
@@ -816,31 +874,32 @@ var datastore;
                         entity.data[key] = tempVal;
                     }
                     //construct our data to insert for this prop, including metadata
-                    const instrumentedData = {
+                    var instrumentedData = {
                         name: key,
                         value: entity.data[key],
                         excludeFromIndexes: prop.isDbIndexExcluded,
                     };
                     //if there is a writeTransform, use it
                     if (prop.dbWriteTransform != null) {
-                        let transformResult = prop.dbWriteTransform(entity.data[key]);
+                        var transformResult = prop.dbWriteTransform(entity.data[key]);
                         instrumentedData.value = transformResult.dbValue;
                         entity.data[key] = transformResult.value;
                     }
                     if (instrumentedData.value == null) {
                         instrumentedData.value = null;
                         if (prop.isOptional === true) {
+                            //ok
                         }
                         else if (schema.db.suppressInvalidSchemaErrors !== true) {
                             //not optional!
-                            log.trace("prop is not optional", { key, prop, entity, schema });
-                            throw new xlib.exception.Exception("prop is not optional", { data: { key, prop, entity, schema } });
+                            log.trace("prop is not optional", { key: key, prop: prop, entity: entity, schema: schema });
+                            throw new xlib.exception.Exception("prop is not optional", { data: { key: key, prop: prop, entity: entity, schema: schema } });
                         }
                     }
                     else {
                         //transform certain data types, and ensure that the schema is of the right type too
-                        const valueType = xlib.reflection.getType(instrumentedData.value);
-                        let expectedType;
+                        var valueType = xlib.reflection.getType(instrumentedData.value);
+                        var expectedType = void 0;
                         switch (prop.dbType) {
                             case "none":
                                 //not to be saved to db, abort the rest of this foreach "loop"
@@ -850,12 +909,12 @@ var datastore;
                                 break;
                             case "double":
                                 //coherse to double
-                                instrumentedData.value = this._ezDatastore.assistantDatastore.double(instrumentedData.value);
+                                instrumentedData.value = _this._ezDatastore.assistantDatastore.double(instrumentedData.value);
                                 expectedType = xlib.reflection.Type.number;
                                 break;
                             case "integer":
                                 //coherse to int
-                                instrumentedData.value = this._ezDatastore.assistantDatastore.int(instrumentedData.value);
+                                instrumentedData.value = _this._ezDatastore.assistantDatastore.int(instrumentedData.value);
                                 expectedType = xlib.reflection.Type.number;
                                 break;
                             case "boolean":
@@ -869,119 +928,124 @@ var datastore;
                                 expectedType = xlib.reflection.Type.Date;
                                 break;
                             default:
-                                throw log.error("unknown dbtype, need to add handling of this in the ._convertDataToInstrumentedEntityData() worker fcn", { key, prop });
+                                throw log.error("unknown dbtype, need to add handling of this in the ._convertDataToInstrumentedEntityData() worker fcn", { key: key, prop: prop });
                         }
-                        log.errorAndThrowIfFalse(valueType === expectedType || schema.db.suppressInvalidSchemaErrors === true, "prop type being written does not match expected schema dbType", { key, prop, entity, schema });
+                        log.errorAndThrowIfFalse(valueType === expectedType || schema.db.suppressInvalidSchemaErrors === true, "prop type being written does not match expected schema dbType", { key: key, prop: prop, entity: entity, schema: schema });
                     }
                     //add the instrumented prop to our return values
                     toReturn.push(instrumentedData);
                 });
                 return toReturn;
-            }
-            _verifyEntityMatchesSchema(schema, entity) {
+            };
+            EzOrm.prototype._verifyEntityMatchesSchema = function (schema, entity) {
                 if (entity.namespace == null && schema.db.isNamespaceRequired === true) {
-                    throw log.error("entity must have namespace set to read/write from db", { schema, entity });
+                    throw log.error("entity must have namespace set to read/write from db", { schema: schema, entity: entity });
                 }
                 if (entity.kind !== schema.db.kind) {
-                    throw log.error("entity and schema kinds do not match", { schema, entity });
+                    throw log.error("entity and schema kinds do not match", { schema: schema, entity: entity });
                 }
-            }
+            };
             /**
              *  if entity doesn't exist in the db, all db properties will not be set (so, keeping their previous values, which are mose likely ```undefined```) and also we set ```schemaEntity.db.exists===false```
              * @param schemaEntity
              * @param transaction
              */
-            readGet(schema, entity, transaction) {
-                return Promise.try(() => {
-                    var connection = transaction == null ? this._ezDatastore : transaction;
-                    this._verifyEntityMatchesSchema(schema, entity);
+            EzOrm.prototype.readGet = function (schema, entity, transaction) {
+                var _this = this;
+                return Promise.try(function () {
+                    var connection = transaction == null ? _this._ezDatastore : transaction;
+                    _this._verifyEntityMatchesSchema(schema, entity);
                     if (entity.id == null) {
-                        throw log.error("entity must have id set to read from db", { schema, entity });
+                        throw log.error("entity must have id set to read from db", { schema: schema, entity: entity });
                     }
                     return connection.getEz(schema.db.kind, entity.id, entity.namespace)
-                        .then((dbResponse) => {
-                        this._processDbResponse_Read(schema, dbResponse, entity);
-                        let result = { schema, entity };
+                        .then(function (dbResponse) {
+                        _this._processDbResponse_Read(schema, dbResponse, entity);
+                        var result = { schema: schema, entity: entity };
                         return Promise.resolve(result);
                     });
                 });
-            }
-            readGetMustExist(schema, entity, transaction) {
+            };
+            EzOrm.prototype.readGetMustExist = function (schema, entity, transaction) {
                 return this.readGet(schema, entity, transaction)
-                    .then((readResponse) => {
+                    .then(function (readResponse) {
                     if (readResponse.entity.dbResult == null) {
                         return Promise.reject(new Error("db result should not be null"));
                     }
                     if (readResponse.entity.dbResult.exists === false) {
-                        return Promise.reject(new Error(`.readGetMustExist() failed.  entity does not exist.  [ ${entity.namespace}, ${entity.kind}, ${entity.id} ]`));
+                        return Promise.reject(new Error(".readGetMustExist() failed.  entity does not exist.  [ " + entity.namespace + ", " + entity.kind + ", " + entity.id + " ]"));
                     }
                     return Promise.resolve(readResponse);
                 });
-            }
-            writeInsert(schema, entity, transaction) {
-                return Promise.try(() => {
-                    var connection = transaction == null ? this._ezDatastore : transaction;
-                    this._verifyEntityMatchesSchema(schema, entity);
-                    const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
-                    log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity, schema });
+            };
+            EzOrm.prototype.writeInsert = function (schema, entity, transaction) {
+                var _this = this;
+                return Promise.try(function () {
+                    var connection = transaction == null ? _this._ezDatastore : transaction;
+                    _this._verifyEntityMatchesSchema(schema, entity);
+                    var dataToWrite = _this._convertDataToInstrumentedEntityData(schema, entity);
+                    log.errorAndThrowIfFalse(entity.dbResult == null, "already has an entity read from the db, even though we are INSERTING!!!, why?", { entity: entity, schema: schema });
                     return connection.insertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-                        .then((writeResponse) => {
+                        .then(function (writeResponse) {
                         //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
                         writeResponse.entity.data = undefined;
-                        this._processDbResponse_Write(schema, writeResponse, entity);
-                        return Promise.resolve({ schema, entity });
+                        _this._processDbResponse_Write(schema, writeResponse, entity);
+                        return Promise.resolve({ schema: schema, entity: entity });
                     });
                 });
-            }
-            writeUpdate(schema, entity, transaction) {
-                return Promise.try(() => {
-                    var connection = transaction == null ? this._ezDatastore : transaction;
-                    this._verifyEntityMatchesSchema(schema, entity);
-                    const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+            };
+            EzOrm.prototype.writeUpdate = function (schema, entity, transaction) {
+                var _this = this;
+                return Promise.try(function () {
+                    var connection = transaction == null ? _this._ezDatastore : transaction;
+                    _this._verifyEntityMatchesSchema(schema, entity);
+                    var dataToWrite = _this._convertDataToInstrumentedEntityData(schema, entity);
                     if (entity.id == null) {
-                        throw log.error("writeUpdating but no id is specified", { entity, schema });
+                        throw log.error("writeUpdating but no id is specified", { entity: entity, schema: schema });
                     }
                     return connection.updateEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-                        .then((writeResponse) => {
+                        .then(function (writeResponse) {
                         //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
                         writeResponse.entity.data = undefined;
-                        this._processDbResponse_Write(schema, writeResponse, entity);
-                        return Promise.resolve({ schema, entity });
+                        _this._processDbResponse_Write(schema, writeResponse, entity);
+                        return Promise.resolve({ schema: schema, entity: entity });
                     });
                 });
-            }
-            writeUpsert(schema, entity, transaction) {
-                return Promise.try(() => {
-                    var connection = transaction == null ? this._ezDatastore : transaction;
-                    this._verifyEntityMatchesSchema(schema, entity);
-                    const dataToWrite = this._convertDataToInstrumentedEntityData(schema, entity);
+            };
+            EzOrm.prototype.writeUpsert = function (schema, entity, transaction) {
+                var _this = this;
+                return Promise.try(function () {
+                    var connection = transaction == null ? _this._ezDatastore : transaction;
+                    _this._verifyEntityMatchesSchema(schema, entity);
+                    var dataToWrite = _this._convertDataToInstrumentedEntityData(schema, entity);
                     if (entity.id == null) {
-                        throw log.error("writeUpsert but no id is specified", { entity, schema });
+                        throw log.error("writeUpsert but no id is specified", { entity: entity, schema: schema });
                     }
                     return connection.upsertEz(entity.kind, entity.id, dataToWrite, entity.namespace)
-                        .then((writeResponse) => {
+                        .then(function (writeResponse) {
                         //delete the response dbEntity.data as it's just the input IEntityInstrumentedData[] array (don't confuse the caller dev)
                         writeResponse.entity.data = undefined;
-                        this._processDbResponse_Write(schema, writeResponse, entity);
-                        return Promise.resolve({ schema, entity });
+                        _this._processDbResponse_Write(schema, writeResponse, entity);
+                        return Promise.resolve({ schema: schema, entity: entity });
                     });
                 });
-            }
+            };
             /**
              *  a successfull delete will set entity.dbResult.exists=false.  but will not delete the entity.id value.
              * @param schema
              * @param entity
              * @param transaction
              */
-            writeDelete(schema, entity, transaction) {
-                return Promise.try(() => {
-                    var connection = transaction == null ? this._ezDatastore : transaction;
-                    this._verifyEntityMatchesSchema(schema, entity);
+            EzOrm.prototype.writeDelete = function (schema, entity, transaction) {
+                var _this = this;
+                return Promise.try(function () {
+                    var connection = transaction == null ? _this._ezDatastore : transaction;
+                    _this._verifyEntityMatchesSchema(schema, entity);
                     if (entity.id == null) {
-                        throw log.error("writeDelete but no id is specified", { entity, schema });
+                        throw log.error("writeDelete but no id is specified", { entity: entity, schema: schema });
                     }
                     return connection.deleteEz(entity.kind, entity.id, entity.namespace)
-                        .then((deleteResponse) => {
+                        .then(function (deleteResponse) {
                         //if (entity.id == null) {
                         //	throw log.error("why key.id deletion magic?", { entity, schema, deleteResponse });
                         //}
@@ -991,11 +1055,12 @@ var datastore;
                             exists: false,
                             lastApiResponse: deleteResponse.apiResponse,
                         };
-                        return Promise.resolve({ schema, entity });
+                        return Promise.resolve({ schema: schema, entity: entity });
                     });
                 });
-            }
-        }
+            };
+            return EzOrm;
+        }());
         dataSchema.EzOrm = EzOrm;
     })(dataSchema = datastore.dataSchema || (datastore.dataSchema = {}));
 })(datastore = exports.datastore || (exports.datastore = {}));

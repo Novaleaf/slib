@@ -1,12 +1,13 @@
 //import refs = require("../refs");
 "use strict";
-const file = require("../file");
-const xlib = require("xlib");
+Object.defineProperty(exports, "__esModule", { value: true });
+var file = require("../file");
+var xlib = require("xlib");
 var Promise = xlib.promise.bluebird;
 var log = new xlib.logging.Logger(__filename);
-const Url = require("url");
+var Url = require("url");
 var __ = xlib.lolo;
-const hapiEco = require("./hapi-eco");
+var hapiEco = require("./hapi-eco");
 /////////////////////////////// HTTPS
 //var _tlsOptions: { key: Buffer; cert: Buffer };
 //if (__devSettings.isDevMode === true) {
@@ -25,7 +26,7 @@ const hapiEco = require("./hapi-eco");
  * @param options
  */
 function initialize(server, _options) {
-    let options;
+    var options;
     if (_options == null) {
         options = {};
     }
@@ -35,7 +36,7 @@ function initialize(server, _options) {
     options.isHttpsOnly = __.defaultIfNull(options.isHttpsOnly, false);
     options.httpPort = __.defaultIfNull(options.httpPort, 80);
     options.httpsPort = __.defaultIfNull(options.httpsPort, 443);
-    let _tlsKeys = null;
+    var _tlsKeys = null;
     if (options.tls != null) {
         _tlsKeys = {
             key: file.fsPromise.readFileSync(options.tls.keyPath),
@@ -46,7 +47,7 @@ function initialize(server, _options) {
     server.connection({ port: options.httpPort, routes: { log: true } });
     //configure for https
     if (_tlsKeys != null) {
-        let httpsConnectionOptions = {
+        var httpsConnectionOptions = {
             port: options.httpsPort,
             tls: _tlsKeys,
         };
@@ -54,7 +55,7 @@ function initialize(server, _options) {
     }
     //redirect http requests if option is set.
     if (options.isHttpsOnly) {
-        server.ext("onRequest", (request, reply) => {
+        server.ext("onRequest", function (request, reply) {
             //log.info("info", request.info);
             //log.info("connection", request.connection);
             if (request.connection.info.port != options.httpsPort && request.path.indexOf("/metrics/") < 0) {
@@ -70,7 +71,7 @@ function initialize(server, _options) {
         });
     }
     if (options.disableSimpleHealthCheckEndpoint !== true) {
-        let routeConfig = hapiEco.ezRouteConfigNoAuth("/metrics/simpleHealthCheck", (request, reply) => {
+        var routeConfig = hapiEco.ezRouteConfigNoAuth("/metrics/simpleHealthCheck", function (request, reply) {
             return Promise.resolve("OK");
         }, ["GET", "POST"], {
             //payload: { output: "data", parse: "gunzip" },

@@ -1,5 +1,6 @@
 "use strict";
-const fsPromise = require("fs-extra-promise");
+Object.defineProperty(exports, "__esModule", { value: true });
+var fsPromise = require("fs-extra-promise");
 exports.fsPromise = fsPromise;
 //import * as xlib from "xlib";
 //let Promise = xlib.promise.bluebird;

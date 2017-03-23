@@ -1,5 +1,6 @@
 "use strict";
-const xlib = require("xlib");
+Object.defineProperty(exports, "__esModule", { value: true });
+var xlib = require("xlib");
 exports.xlib = xlib;
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
@@ -22,7 +23,7 @@ exports.commander = require("commander");
 ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////
 //slib custom modules
-const file = require("./file");
+var file = require("./file");
 exports.file = file;
 //export import processManager = require("./processmanager");
 /** web server needs */
@@ -84,7 +85,8 @@ exports.getNetworkIPs = (function () {
             filter6RE = /\binet6[^:]+:\s*([^\s]+)/g; // IPv6
             break;
     }
-    return function (bypassCache = false) {
+    return function (bypassCache) {
+        if (bypassCache === void 0) { bypassCache = false; }
         if (cachedV4 == null || bypassCache === true) {
             var stdoutBuffer = exports.childProcess.execSync(command);
             cachedV4 = [];

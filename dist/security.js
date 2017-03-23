@@ -1,11 +1,12 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 //"use strict";
 //import refs = require("./refs");
 //import xlib = refs.xlib;
-const xlib = require("xlib");
+var xlib = require("xlib");
 var Promise = xlib.promise.bluebird;
 /** npm bcrypt.  Suggest you use our managed ```Kdf``` class instead. */
-const _bcrypt = require("bcrypt");
+var _bcrypt = require("bcrypt");
 /**
  *  An Argon2 library for Node (KDF implementation)
 Bindings to the reference Argon2 implementation.
@@ -20,17 +21,20 @@ exports.crypto = require("crypto");
  *  https://en.wikipedia.org/wiki/Key_derivation_function
  *  INTEROP DIFFERENCE: if interop is needed on different platforms, be sure you implement this logic: we Sha256 hash the input data, and use the base64 encoded version of that (44 digits) hash as input to bcrypt.  This keeps the input length under bcrypts 50 char max keyspace.  everything else is normal bcrypt.
  */
-class __OldKdf {
+var __OldKdf = (function () {
+    function __OldKdf() {
+    }
     /**
      * generate a combined "version+hash+salt" output 60 characters long.
      */
-    static hashSync(data, rounds = __OldKdf._defaultRounds) {
+    __OldKdf.hashSync = function (data, rounds) {
+        if (rounds === void 0) { rounds = __OldKdf._defaultRounds; }
         var salt = _bcrypt.genSaltSync(rounds);
         var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
         //console.log("SHA256 KEYSPACE = " + dataHash.length);
         return _bcrypt.hashSync(dataHash, salt);
-    }
-    static hashAsync(data, 
+    };
+    __OldKdf.hashAsync = function (data, 
         /** default=12.  A note about the cost. When you are hashing your data the module will go through a series of rounds to give you a secure hash. The value you submit there is not just the number of rounds that the module will go through to hash your data. The module will use the value you enter and go through 2^rounds iterations of processing.
 
 From @garthk, on a 2GHz core you can roughly expect:
@@ -45,10 +49,25 @@ rounds=14: ~1.5 sec/hash
 rounds=15: ~3 sec/hash
 rounds=25: ~1 hour/hash
 rounds=31: 2-3 days/hash */
-        rounds = __OldKdf._defaultRounds) {
-        var promise = new Promise((callback, reject) => {
+        rounds) {
+        /** default=12.  A note about the cost. When you are hashing your data the module will go through a series of rounds to give you a secure hash. The value you submit there is not just the number of rounds that the module will go through to hash your data. The module will use the value you enter and go through 2^rounds iterations of processing.
+
+From @garthk, on a 2GHz core you can roughly expect:
+
+rounds=8 : ~40 hashes/sec
+rounds=9 : ~20 hashes/sec
+rounds=10: ~10 hashes/sec
+rounds=11: ~5  hashes/sec
+rounds=12: 2-3 hashes/sec
+rounds=13: ~1 sec/hash
+rounds=14: ~1.5 sec/hash
+rounds=15: ~3 sec/hash
+rounds=25: ~1 hour/hash
+rounds=31: 2-3 days/hash */
+        if (rounds === void 0) { rounds = __OldKdf._defaultRounds; }
+        var promise = new Promise(function (callback, reject) {
             var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
-            _bcrypt.hash(dataHash, rounds, (err, encrypted) => {
+            _bcrypt.hash(dataHash, rounds, function (err, encrypted) {
                 if (err != null) {
                     return reject(err);
                 }
@@ -56,14 +75,14 @@ rounds=31: 2-3 days/hash */
             });
         });
         return promise;
-    }
-    static compareSync(data, encrypted) {
+    };
+    __OldKdf.compareSync = function (data, encrypted) {
         return _bcrypt.compareSync(data, encrypted);
-    }
-    static compareAsync(data, encrypted) {
-        var promise = new Promise((callback, reject) => {
+    };
+    __OldKdf.compareAsync = function (data, encrypted) {
+        var promise = new Promise(function (callback, reject) {
             var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
-            _bcrypt.compare(dataHash, encrypted, (err, isSame) => {
+            _bcrypt.compare(dataHash, encrypted, function (err, isSame) {
                 if (err != null) {
                     return reject(err);
                 }
@@ -71,8 +90,9 @@ rounds=31: 2-3 days/hash */
             });
         });
         return promise;
-    }
-}
+    };
+    return __OldKdf;
+}());
 __OldKdf._defaultRounds = 12;
 exports.__OldKdf = __OldKdf;
 /**
@@ -81,21 +101,25 @@ exports.__OldKdf = __OldKdf;
  *  Uses the Argon2 KDF algorithm internally.  For more info: https://www.npmjs.com/package/argon2
  *  Hash output is 100% compatible with Argon2,  is a string 90 characters long, and it is identifiable as being an Argon2 hash by it's prefix:  "$argon2".
  */
-class Kdf {
+var Kdf = (function () {
+    function Kdf() {
+    }
     /**
      * generate a combined "version+hash+salt" output 60 characters long.
      */
-    static hashSync(inputSecret, options = Kdf._defaultOptions) {
+    Kdf.hashSync = function (inputSecret, options) {
+        if (options === void 0) { options = Kdf._defaultOptions; }
         var salt = _argon2.generateSaltSync();
         return _argon2.encryptSync(inputSecret, salt, options);
-    }
-    static hashAsync(inputSecret, options = Kdf._defaultOptions) {
-        var promise = new Promise((callback, reject) => {
-            _argon2.generateSalt((saltErr, salt) => {
+    };
+    Kdf.hashAsync = function (inputSecret, options) {
+        if (options === void 0) { options = Kdf._defaultOptions; }
+        var promise = new Promise(function (callback, reject) {
+            _argon2.generateSalt(function (saltErr, salt) {
                 if (saltErr != null) {
                     return reject(saltErr);
                 }
-                _argon2.encrypt(inputSecret, salt, options, (encryptErr, hash) => {
+                _argon2.encrypt(inputSecret, salt, options, function (encryptErr, hash) {
                     if (encryptErr != null) {
                         return reject(encryptErr);
                     }
@@ -104,13 +128,13 @@ class Kdf {
             });
         });
         return promise;
-    }
-    static verifySync(inputSecret, kdfOutputHash) {
+    };
+    Kdf.verifySync = function (inputSecret, kdfOutputHash) {
         return _argon2.verifySync(kdfOutputHash, inputSecret);
-    }
-    static verifyAsync(inputSecret, kdfOutputHash) {
-        var promise = new Promise((callback, reject) => {
-            _argon2.verify(kdfOutputHash, inputSecret, (err) => {
+    };
+    Kdf.verifyAsync = function (inputSecret, kdfOutputHash) {
+        var promise = new Promise(function (callback, reject) {
+            _argon2.verify(kdfOutputHash, inputSecret, function (err) {
                 if (err != null) {
                     return reject(err);
                 }
@@ -118,8 +142,9 @@ class Kdf {
             });
         });
         return promise;
-    }
-}
+    };
+    return Kdf;
+}());
 Kdf._defaultOptions = { argon2d: false, memoryCost: 12, parallelism: 2, timeCost: 10 };
 exports.Kdf = Kdf;
 /**

@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 /** google cloud api's */
 exports.gcloud = require("./gcloud");
 /** email service: npm sendgrid. */
