@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/Novaleaf/slib#readme",
   "dependencies": {
+    "@types/node": "^6.0.66",
     "@types/bcrypt": "0.0.30",
     "@types/commander": "^2.3.30",
     "@types/fs-extra-promise": "0.0.30",
