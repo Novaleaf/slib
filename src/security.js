@@ -5,8 +5,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 //import xlib = refs.xlib;
 var xlib = require("xlib");
 var Promise = xlib.promise.bluebird;
-/** npm bcrypt.  Suggest you use our managed ```Kdf``` class instead. */
-var _bcrypt = require("bcrypt");
 /**
  *  An Argon2 library for Node (KDF implementation)
 Bindings to the reference Argon2 implementation.
@@ -15,86 +13,66 @@ Suggest you use our managed ```Kdf``` class instead.
 var _argon2 = require("argon2");
 /** node's crypto library */
 exports.crypto = require("crypto");
-/**
- *  old version of our KDF class using BCrypt.
- *  simple to use KDF.  modern, secure, and promise friendly.
- *  https://en.wikipedia.org/wiki/Key_derivation_function
- *  INTEROP DIFFERENCE: if interop is needed on different platforms, be sure you implement this logic: we Sha256 hash the input data, and use the base64 encoded version of that (44 digits) hash as input to bcrypt.  This keeps the input length under bcrypts 50 char max keyspace.  everything else is normal bcrypt.
- */
-var __OldKdf = (function () {
-    function __OldKdf() {
-    }
-    /**
-     * generate a combined "version+hash+salt" output 60 characters long.
-     */
-    __OldKdf.hashSync = function (data, rounds) {
-        if (rounds === void 0) { rounds = __OldKdf._defaultRounds; }
-        var salt = _bcrypt.genSaltSync(rounds);
-        var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
-        //console.log("SHA256 KEYSPACE = " + dataHash.length);
-        return _bcrypt.hashSync(dataHash, salt);
-    };
-    __OldKdf.hashAsync = function (data, 
-        /** default=12.  A note about the cost. When you are hashing your data the module will go through a series of rounds to give you a secure hash. The value you submit there is not just the number of rounds that the module will go through to hash your data. The module will use the value you enter and go through 2^rounds iterations of processing.
-
-From @garthk, on a 2GHz core you can roughly expect:
-
-rounds=8 : ~40 hashes/sec
-rounds=9 : ~20 hashes/sec
-rounds=10: ~10 hashes/sec
-rounds=11: ~5  hashes/sec
-rounds=12: 2-3 hashes/sec
-rounds=13: ~1 sec/hash
-rounds=14: ~1.5 sec/hash
-rounds=15: ~3 sec/hash
-rounds=25: ~1 hour/hash
-rounds=31: 2-3 days/hash */
-        rounds) {
-        /** default=12.  A note about the cost. When you are hashing your data the module will go through a series of rounds to give you a secure hash. The value you submit there is not just the number of rounds that the module will go through to hash your data. The module will use the value you enter and go through 2^rounds iterations of processing.
-
-From @garthk, on a 2GHz core you can roughly expect:
-
-rounds=8 : ~40 hashes/sec
-rounds=9 : ~20 hashes/sec
-rounds=10: ~10 hashes/sec
-rounds=11: ~5  hashes/sec
-rounds=12: 2-3 hashes/sec
-rounds=13: ~1 sec/hash
-rounds=14: ~1.5 sec/hash
-rounds=15: ~3 sec/hash
-rounds=25: ~1 hour/hash
-rounds=31: 2-3 days/hash */
-        if (rounds === void 0) { rounds = __OldKdf._defaultRounds; }
-        var promise = new Promise(function (callback, reject) {
-            var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
-            _bcrypt.hash(dataHash, rounds, function (err, encrypted) {
-                if (err != null) {
-                    return reject(err);
-                }
-                return callback(encrypted);
-            });
-        });
-        return promise;
-    };
-    __OldKdf.compareSync = function (data, encrypted) {
-        return _bcrypt.compareSync(data, encrypted);
-    };
-    __OldKdf.compareAsync = function (data, encrypted) {
-        var promise = new Promise(function (callback, reject) {
-            var dataHash = exports.crypto.createHash("sha256").update(data).digest().toString("base64");
-            _bcrypt.compare(dataHash, encrypted, function (err, isSame) {
-                if (err != null) {
-                    return reject(err);
-                }
-                return callback(isSame);
-            });
-        });
-        return promise;
-    };
-    return __OldKdf;
-}());
-__OldKdf._defaultRounds = 12;
-exports.__OldKdf = __OldKdf;
+///**
+// *  old version of our KDF class using BCrypt.
+// *  simple to use KDF.  modern, secure, and promise friendly.
+// *  https://en.wikipedia.org/wiki/Key_derivation_function
+// *  INTEROP DIFFERENCE: if interop is needed on different platforms, be sure you implement this logic: we Sha256 hash the input data, and use the base64 encoded version of that (44 digits) hash as input to bcrypt.  This keeps the input length under bcrypts 50 char max keyspace.  everything else is normal bcrypt.
+// */
+//export class __OldKdf {
+//    private static _defaultRounds = 12;
+//    /**
+//     * generate a combined "version+hash+salt" output 60 characters long.
+//     */
+//    public static hashSync(data: string,
+//        rounds = __OldKdf._defaultRounds): string {
+//        var salt = _bcrypt.genSaltSync(rounds);
+//        var dataHash = crypto.createHash("sha256").update(data).digest().toString("base64");
+//        //console.log("SHA256 KEYSPACE = " + dataHash.length);
+//        return _bcrypt.hashSync(dataHash, salt);
+//    }
+//    public static hashAsync(
+//        data: string,
+//        /** default=12.  A note about the cost. When you are hashing your data the module will go through a series of rounds to give you a secure hash. The value you submit there is not just the number of rounds that the module will go through to hash your data. The module will use the value you enter and go through 2^rounds iterations of processing.
+//From @garthk, on a 2GHz core you can roughly expect:
+//rounds=8 : ~40 hashes/sec
+//rounds=9 : ~20 hashes/sec
+//rounds=10: ~10 hashes/sec
+//rounds=11: ~5  hashes/sec
+//rounds=12: 2-3 hashes/sec
+//rounds=13: ~1 sec/hash
+//rounds=14: ~1.5 sec/hash
+//rounds=15: ~3 sec/hash
+//rounds=25: ~1 hour/hash
+//rounds=31: 2-3 days/hash */
+//        rounds = __OldKdf._defaultRounds): Promise<string> {
+//        var promise = new Promise<string>((callback, reject) => {
+//            var dataHash = crypto.createHash("sha256").update(data).digest().toString("base64");
+//            _bcrypt.hash(dataHash, rounds, (err, encrypted) => {
+//                if (err != null) {
+//                    return reject(err);
+//                }
+//                return callback(encrypted);
+//            });
+//        });
+//        return promise;
+//    }
+//    public static compareSync(data: string, encrypted: string): boolean {
+//        return _bcrypt.compareSync(data, encrypted);
+//    }
+//    public static compareAsync(data: string, encrypted: string): Promise<boolean> {
+//        var promise = new Promise<boolean>((callback, reject) => {
+//            var dataHash = crypto.createHash("sha256").update(data).digest().toString("base64");
+//            _bcrypt.compare(dataHash, encrypted, (err, isSame) => {
+//                if (err != null) {
+//                    return reject(err);
+//                }
+//                return callback(isSame);
+//            });
+//        });
+//        return promise;
+//    }
+//}
 /**
  * simple to use KDF.  modern, secure, gpu resistant, and promise friendly.
  *  https://en.wikipedia.org/wiki/Key_derivation_function

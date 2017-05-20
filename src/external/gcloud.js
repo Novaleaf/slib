@@ -15,11 +15,19 @@ var _ = xlib.lodash;
 var __ = xlib.lolo;
 var log = new xlib.logging.Logger(__filename);
 var Promise = xlib.promise.bluebird;
+//
+/**
+ *  google cloud modules
+ */
+exports.gcloud = {
+    //bigquery: require("@google-cloud/bigquery"),
+    datastore: require("@google-cloud/datastore"),
+};
 /**
  *  definitions for v0.27.0
   docs here: https://googlecloudplatform.github.io/gcloud-node/#/docs/v0.27.0/datastore/dataset
  */
-exports.gcloud = require("google-cloud");
+//export var gcloud: IModuleImport = require("google-cloud");
 var logGCloud = new xlib.logging.Logger("GCLOUD", xlib.environment.LogLevel.DEBUG);
 //export module ezSchema {
 //	enum Constraints {

@@ -8,9 +8,9 @@ import __ = xlib.lolo;
 var log = new xlib.logging.Logger(__filename);
 import Promise = xlib.promise.bluebird;
 
-export interface IModuleImport {
-	(authOptions?: IAuthOptions): IGCloud;
-}
+//export interface IModuleImport {
+//	(authOptions?: IAuthOptions): IGCloud;
+//}
 
 export interface IAuthOptions {
 	projectId?: string;
@@ -19,7 +19,7 @@ export interface IAuthOptions {
 
 
 export interface IGCloud {
-	bigquery: (authOptions?: IAuthOptions) => any;
+	//bigquery: (authOptions?: IAuthOptions) => any;
 	//v0.28:  datastore: datastore.IDatastore_v028;
 	datastore(options?: datastore.IDatastoreOptions): datastore.IDatastore_v040;
 }
@@ -415,15 +415,24 @@ If the commit request fails, we will automatically rollback the transaction.
 	}
 }
 
-
+//
+/**
+ *  google cloud modules
+ */
+export const gcloud: IGCloud = {
+	//bigquery: require("@google-cloud/bigquery"),
+	datastore: require("@google-cloud/datastore"),
+};
 
 /**
  *  definitions for v0.27.0
   docs here: https://googlecloudplatform.github.io/gcloud-node/#/docs/v0.27.0/datastore/dataset
  */
-export var gcloud: IModuleImport = require("google-cloud");
+//export var gcloud: IModuleImport = require("google-cloud");
+
 
 let logGCloud = new xlib.logging.Logger("GCLOUD", xlib.environment.LogLevel.DEBUG);
+
 
 
 //export module ezSchema {

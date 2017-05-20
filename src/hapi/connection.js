@@ -1,5 +1,6 @@
-//import refs = require("../refs");
 "use strict";
+//import refs = require("../refs");
+Object.defineProperty(exports, "__esModule", { value: true });
 var file = require("../file");
 var xlib = require("xlib");
 var Promise = xlib.promise.bluebird;
@@ -43,7 +44,7 @@ function initialize(server, _options) {
         };
     }
     //configure for http
-    server.connection({ port: options.httpPort });
+    server.connection({ port: options.httpPort, routes: { log: true } });
     //configure for https
     if (_tlsKeys != null) {
         var httpsConnectionOptions = {
@@ -81,7 +82,7 @@ function initialize(server, _options) {
     //setup error listening
     server.on('request-error', function (request, err) {
         //console.log(err.data.stack);		
-        log.error("nlib.hapi-eco.connection.server.on.request-error", { request: hapiEco.requestToJson(request) }, err);
+        log.error("nlib.hapi-eco.connection.server.on.request-error", { request: hapiEco.requestToJson(request, { verboseRequestLogs: true }) }, err);
         //console.log('Error response (500) sent for request: ' + request.id + ' because: ' + (err.trace || err.stack || err));
     });
     //server.route([
