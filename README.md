@@ -2,7 +2,11 @@
 ----------------
 #refactor in progress
 
-reworking to support new mature typescript ecosystem.
+reworking to support new mature typescript ecosystem:
+- async/await as default workflow
+- modern libraries
+
+if you are interested in trying it out:  ```npm install slib@next```
 
 #### problems running ```npm install```?
 
