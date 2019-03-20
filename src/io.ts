@@ -10,29 +10,28 @@ import * as glob from "glob";
 export { glob };
 
 
-
+export import path = require( "path" );
 
 /** find files.  internally uses https://www.npmjs.com/package/glob */
-export function find( pattern: string, options?: glob.IOptions & {/** by default we will normalize the path (remove/replace "..").  pass "true" to disble this */disableNormalization?: boolean } ) {
+export function find( pattern: string, options?: glob.IOptions & {/** by default we will normalize the path (remove/replace "..").  pass "true" to disble this */disableNormalization?: boolean; } ) {
 	return new Promise<string[]>( ( resolve, reject ) => {
-		glob( pattern, options, ( err, files ) => {
+		glob.default( pattern, options, ( err: Error, files ) => {
 			if ( err ) {
-				return reject( err );
+				reject( err );
+				return;
 			}
 			if ( options && options.disableNormalization === true ) {
-				return resolve( files );
+				resolve( files );
+				return;
 			}
 			const normalizedFiles = files.map( path.normalize );
-			return resolve( normalizedFiles );
+			resolve( normalizedFiles );
+			return;
 		} );
 	} );
 }
 
-export import path = require( "path" );
-
 const pathSep = path.sep;
-
-
 
 
 /** mkdir recursively */
@@ -53,8 +52,13 @@ export async function mkdir( pathToCreate: string,
 		}
 	};
 	return new xlib.promise.bluebird<string>( ( resolve, reject ) => {
-		mkdirp( pathToCreate, mkdirOptions, ( err, made ) => {
-			return err ? reject( err ) : resolve( made );
+		mkdirp.default( pathToCreate, mkdirOptions, ( err, made ) => {
+			if ( err != null ) {
+				reject( err );
+			} else {
+				resolve( made );
+			}
+			return;
 		} );
 	} );
 }
@@ -66,11 +70,8 @@ export { del };
 // del()
 
 
-
 // /** delete dir recursively */
 // import * as rimraf from "rimraf";
-
-
 
 
 // export function rmDirRecursiveAsync( path ): Promise<void> {
