@@ -77,7 +77,7 @@
         "no-boolean-literal-compare": false, //! change in v15, autofix, make sure non-bools can't be compared first
         "no-conditional-assignment": true,
         "no-consecutive-blank-lines": [
-            true,
+            false,
             2
         ], ////autofix
         "no-console": true,

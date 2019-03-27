@@ -1,16 +1,17 @@
-import mz = require( "mz" );
+
 import * as xlib from "xlib";
-
-
-import { fs } from "mz";
-export { fs };
+//import { fs } from "mz";
+// tslint:disable-next-line: no-submodule-imports
+export * from "mz/fs";
 
 
 import * as glob from "glob";
-export { glob };
-
+//export { glob };
+import * as os_fs from "fs";
 
 export import path = require( "path" );
+
+
 
 /** find files.  internally uses https://www.npmjs.com/package/glob */
 export function find( pattern: string, options?: glob.IOptions & {/** by default we will normalize the path (remove/replace "..").  pass "true" to disble this */disableNormalization?: boolean; } ) {
@@ -34,25 +35,27 @@ export function find( pattern: string, options?: glob.IOptions & {/** by default
 const pathSep = path.sep;
 
 
+
 /** mkdir recursively */
-import * as mkdirp from "mkdirp";
+import * as _mkdirp from "mkdirp";
 /** Create each supplied directory including any necessary parent directories that don't yet exist..   internally uses https://www.npmjs.com/package/mkdirp 
 	* @returns  first directory made that had to be created, if any. 
 	@throws fs error if any encountered
 */
-export async function mkdir( pathToCreate: string,
+
+export async function mkdir_recursive( pathToCreate: string,
 	/** If a directory needs to be created, set the mode as an octal permission string or number */
 	mode?: string | number
 ) {
-	const mkdirOptions: mkdirp.Options = {
+	const mkdirOptions: _mkdirp.Options = {
 		mode,
 		fs: {
-			mkdir: fs.mkdir as any,
-			stat: fs.stat as any,
+			mkdir: os_fs.mkdir,
+			stat: os_fs.stat,
 		}
 	};
 	return new xlib.promise.bluebird<string>( ( resolve, reject ) => {
-		mkdirp.default( pathToCreate, mkdirOptions, ( err, made ) => {
+		_mkdirp.default( pathToCreate, mkdirOptions, ( err, made ) => {
 			if ( err != null ) {
 				reject( err );
 			} else {
@@ -63,8 +66,17 @@ export async function mkdir( pathToCreate: string,
 	} );
 }
 
-import * as del from "del";
-export { del };
+/** delete files and folders using globs and promises.  https://www.npmjs.com/package/del */
+export import del = require( "del" );
+
+// import * as _del from "del";
+// export { del };
+
+
+
+
+// import xx = require( "xlib" );
+// xx.
 
 
 // del()
