@@ -128,16 +128,22 @@ export async function exec( cmd: string, options?: {
 	//log.info( `about to exec "${ cmd }".  It's output is:`);
 	let toReturn = new __.bb<{ shellCmd: string; code: number; stdout: string; stderr: string; }>( ( resolve, reject ) => {
 		shelljs.exec( cmd, options as any, ( code: number, stdout: string, stderr: string ) => {
-			let toResolve = { shellCmd: cmd, code, stdout, stderr };
-			shelljs.echo( chalk.bold.red( "shell.exec,exitCode: " ) + chalk.italic.gray( `${ toResolve.code } (expected ${ options.exitCode })` ) );
+
+			//normalize params
+			code = code == null ? -1 : code;
+			stdout = stdout == null ? "" : stdout.trim();
+			stderr = stderr == null ? "" : stderr.trim();
+
+			shelljs.echo( chalk.bold.red( "shell.exec,exitCode: " ) + chalk.italic.gray( `${ code } (expected ${ options.exitCode })` ) );
 
 			if ( options.exitCode != null ) {
-				if ( toResolve.code !== options.exitCode ) {
-					const wrongErrorCodeEx = new Error( `WRONG ERRORCODE.  Expected "${ options.exitCode }" but got "${ toResolve.code }" when running "shell.exec('${ cmd }')"` );
+				if ( code !== options.exitCode ) {
+					const wrongErrorCodeEx = new Error( `WRONG ERRORCODE.  Expected "${ options.exitCode }" but got "${ code }" when running "shell.exec('${ cmd }')"` );
 					reject( wrongErrorCodeEx );
 					return;
 				}
 			}
+			let toResolve = { shellCmd: cmd, code, stdout, stderr };
 			resolve( toResolve );
 			return;
 		} );

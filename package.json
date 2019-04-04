@@ -33,7 +33,7 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.4",
     "shelljs": "^0.8.3",
-    "xlib": "^15.1.2"
+    "xlib": "^16.1.0"
   },
   "devDependencies": {}
 }
