@@ -33,7 +33,9 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.4",
     "shelljs": "^0.8.3",
-    "xlib": "^16.1.0"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "peerDependencies": {
+    "xlib": "^16.3.0"
+  }
 }
