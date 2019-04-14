@@ -1,0 +1,1 @@
+export import os = require( "os" );

@@ -62,4 +62,29 @@ export namespace vm {
 
 
 	}
-}
+
+	/**
+ *  extract the final client ip address, for use either when using a "bare" server or when using Google Compute's HTTP Load Balancer.
+ *  
+ * @param request
+ */
+	export function extractClientIpBareOrGCloudHttpLoadBalancer( /** works directly with hapi's request object */ request: { info: { remoteAddress: string }; headers: Record<string, string> }, forwardingSteps = 2, proxyIfRemoteAddressStartsWith = "130.211", ipIfInvalid = "0.0.0.0" ) {
+
+		if ( request.info.remoteAddress.indexOf( proxyIfRemoteAddressStartsWith ) === 0 ) {
+			try {
+				let xFF = request.headers[ 'x-forwarded-for' ];
+				if ( xFF != null ) {
+					let xFFSplit = xFF.split( ',' )
+					let targetHop = xFFSplit.length - forwardingSteps;
+					let ip = xFFSplit[ targetHop ];
+					return ip;
+				}
+				return request.info.remoteAddress;
+			} catch ( ex ) {
+				return ipIfInvalid;
+			}
+		} else {
+			return request.info.remoteAddress;
+		}
+
+	}
