@@ -119,7 +119,7 @@ export async function exec( cmd: string, options?: {
 	shellOptions?: shelljs.ExecOptions;
 	// /** if exitCode doesn't match the expectedExitCode, throw this error.   If you pass an Exception object, we will attach a descriptive innerError if one is not set. */
 	// toThrow?: Error | __.diag.Exception;
-} ) {
+} ): Promise<{ shellCmd: string; code: number; stdout: string; stderr: string; }> {
 
 	options = { exitCode: 0, ...options };
 
