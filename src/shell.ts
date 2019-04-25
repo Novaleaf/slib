@@ -127,7 +127,7 @@ export async function exec( cmd: string, options?: {
 
 	//log.info( `about to exec "${ cmd }".  It's output is:`);
 	let toReturn = new __.bb<{ shellCmd: string; code: number; stdout: string; stderr: string; }>( ( resolve, reject ) => {
-		shelljs.exec( cmd, options as any, ( code: number, stdout: string, stderr: string ) => {
+		shelljs.exec(cmd, options as any, ( code: number, stdout: string, stderr: string ) => {
 
 			//normalize params
 			code = code == null ? -1 : code;

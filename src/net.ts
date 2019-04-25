@@ -13,7 +13,7 @@ export import URL = require( "url" );
  * @ignore
  */
 export function parseUrl( url: string ) {
-	var parsed: URL.UrlWithStringQuery & { username?: string; password?: string; scheme?: string; } = URL.parse( url );
+	let parsed: URL.UrlWithStringQuery & { username?: string; password?: string; scheme?: string; } = URL.parse( url );
 
 
 	parsed.username = null;
@@ -25,7 +25,7 @@ export function parseUrl( url: string ) {
 		const matches = /^([^:]+)(:?)(.*)$/.exec( parsed.auth );
 		if ( matches && matches.length === 4 ) {
 			parsed.username = matches[ 1 ];
-			if ( matches[ 2 ] === ':' ) parsed.password = matches[ 3 ];
+			if ( matches[ 2 ] === ':' ) { parsed.password = matches[ 3 ]; }
 		}
 	}
 
@@ -42,7 +42,7 @@ export function parseUrl( url: string ) {
 	// }
 
 	return parsed;
-};
+}
 
 // /**  */
 // export function request( options: _requestLib.Options & { throwOnError?: boolean;  } ) {

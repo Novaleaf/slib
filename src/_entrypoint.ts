@@ -21,4 +21,6 @@ export import net = require( "./net" );
 export import node = require( "./node" );
 
 
+/** not very general purpose, these sub-modules contain helpers for specific situations or scenarios */
+export import patterns = require( "./patterns/_index" );
 
