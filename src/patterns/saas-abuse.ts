@@ -65,7 +65,18 @@ export class UseLimitFraudCheck {
 
 	}
 
-	public isBlacklisted( apiKey: string, resource: string ): boolean {
+	public checkUse( apiKey: string, resource: string ): {
+		/** true if we detect abusive behaviour from this ```userKey```'s access of the ```resource```, 
+		 * regardless of if the accesss should be blocked */
+		isAbuse: boolean;
+		/** ```false``` if you should allow usage to the resource (such as non-fraud access, or fraud usage is detected but we are in our obfuscation grace period).
+		 * 
+		 * An example would be to allow the abuse call, but penalize in cost.
+		 * 
+		 * ```true``` means deny the usage (and inform the use as such.  EG HTTP 403 error)
+		 *  */
+		preventAccess: boolean;
+	} {
 
 		let now = __.utc();
 		const _storage = this._storage;
@@ -84,7 +95,7 @@ export class UseLimitFraudCheck {
 			//if blacklist is in effect, lets just stop now.
 			if ( resourceInfo.blacklistExpires != null ) {
 				if ( resourceInfo.blacklistExpires.valueOf() > now.valueOf() ) {
-					return true;
+					return { isAbuse: true, preventAccess: true };
 				} else {
 					//expired, clear it.
 					resourceInfo.blacklistExpires = null;
@@ -133,11 +144,15 @@ export class UseLimitFraudCheck {
 			//check if blacklisted
 			if ( resourceInfo.blacklistExpires != null ) {
 				if ( resourceInfo.blacklistExpires.valueOf() > now.valueOf() ) {
-					return true;
+					return { isAbuse: true, preventAccess: true };
 				}
 			}
 
-			return false;
+			if ( resourceInfo.blacklistStarts != null ) {
+				return { isAbuse: true, preventAccess: false };
+			}
+
+			return { isAbuse: false, preventAccess: false };
 
 		} finally {
 
@@ -150,7 +165,7 @@ export class UseLimitFraudCheck {
 				//do a cleanup pass for this domain
 				this._doHousekeeping( resource );
 				resourceInfo.cleanupTimeoutHandle = null;
-			}, this.options.sampleWindowMs.valueOf() + 50 ); //50ms after sample window ends
+			}, this.options.sampleWindowMs.valueOf() + 5 ); //schedule for 5ms after sample window ends
 
 		}
 

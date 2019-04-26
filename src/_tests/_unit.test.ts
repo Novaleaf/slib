@@ -26,8 +26,8 @@ describe( "saas-abuse tests", () => {
 			let resource = "basic-valid";
 			for ( let i = 0; i < 1000; i++ ) {
 				let user = users[ __.num.randomInt( 0, users.length ) ].toString();
-				let isBlacklisted = useLimitFraudCheck.isBlacklisted( user, resource );
-				log.throwCheck( isBlacklisted === false, `${ resource } use checks should always succeed.  failied try "${ i }" for user "${ user }"` );
+				let { isAbuse, preventAccess } = useLimitFraudCheck.checkUse( user, resource );
+				log.throwCheck( preventAccess === false && isAbuse === false, `${ resource } use checks should always succeed.  failied try "${ i }" for user "${ user }"` );
 			}
 
 		} );
@@ -56,8 +56,8 @@ describe( "saas-abuse tests", () => {
 							}
 							try {
 								log.info( `resource "${ pass }-valid" try ${ i } at ${ __.utc().diff( start ).as( "milliseconds" ) }ms ` );
-								let isBlacklisted = useLimitFraudCheck.isBlacklisted( i.toString(), `${ pass }-valid` );
-								log.throwCheck( isBlacklisted === false, `a-valid use checks should always succeed.  failied try ${ i }` );
+								let useInfo = useLimitFraudCheck.checkUse( i.toString(), `${ pass }-valid` );
+								log.throwCheck( useInfo.isAbuse === false && useInfo.preventAccess === false, `a-valid use checks should always succeed.  failied try ${ i }` );
 
 								if ( i < max ) {
 									scheduleTry( i + 1 );
@@ -93,27 +93,27 @@ describe( "saas-abuse tests", () => {
 			let start = __.utc();
 			let resource = "verlify-blacklisted";
 			for ( let i = 0; i < useLimitFraudCheck.options.maxValidUses; i++ ) {
-				let isBlacklisted = useLimitFraudCheck.isBlacklisted( i.toString(), resource );
-				log.throwCheck( isBlacklisted === false, `these first tries should succeed.  failied try "${ i }"` );
+				let { isAbuse, preventAccess } = useLimitFraudCheck.checkUse( i.toString(), resource );
+				log.throwCheck( preventAccess === false, `these first tries should succeed.  failied try "${ i }"` );
 			}
 			//next should not fail, but the resource should be flagged for blacklisting soon
 			{
 				log.info( `verify blacklist will start, but hasn't yet, then will sleep for ${ useLimitFraudCheck.options.obfuscateBlacklistDelayMs.valueOf() }ms` );
 				let resourceInfo = useLimitFraudCheck._storage.get( resource );
 				log.throwCheck( resourceInfo.blacklistExpires == null && resourceInfo.blacklistStarts == null, "should not yet be blacklisted" );
-				let isBlacklisted = useLimitFraudCheck.isBlacklisted( "b", resource );
-				log.throwCheck( isBlacklisted === false, `${ resource } should not fail, but be blacklisted soon` );
+				let useInfo = useLimitFraudCheck.checkUse( "b", resource );
+				log.throwCheck( useInfo.preventAccess === false && useInfo.isAbuse === true, `${ resource } should not fail, but be blacklisted soon` );
 				log.throwCheck( resourceInfo.blacklistExpires == null && resourceInfo.blacklistStarts != null, "should be blacklisted soon" );
 				log.throwCheck( resourceInfo.blacklistStarts.valueOf() > __.utc().valueOf(), "expected to be blacklisted soon, but not yet" );
 				await __.bb.delay( useLimitFraudCheck.options.obfuscateBlacklistDelayMs.valueOf() );
 				let finishBlacklistDelay = Math.max( checkOptions.sampleWindowMs.valueOf(), checkOptions.blacklistDuration.valueOf() );
 				log.info( `verify blacklist has started, then sleep for ${ finishBlacklistDelay / 1000 } seconds` );
-				isBlacklisted = useLimitFraudCheck.isBlacklisted( "b", resource );
-				log.throwCheck( isBlacklisted === true, `we waited for the blacklistDelay.  ${ resource } should now be blacklisted` );
+				useInfo = useLimitFraudCheck.checkUse( "b", resource );
+				log.throwCheck( useInfo.preventAccess === true && useInfo.isAbuse === true, `we waited for the blacklistDelay.  ${ resource } should now be blacklisted` );
 				await __.bb.delay( finishBlacklistDelay );
 				log.info( `verify resource is not blacklisted anymore` );
-				isBlacklisted = useLimitFraudCheck.isBlacklisted( "b", resource );
-				log.throwCheck( isBlacklisted === false, `${ resource } should not fail, no longer blacklisted` );
+				useInfo = useLimitFraudCheck.checkUse( "b", resource );
+				log.throwCheck( useInfo.preventAccess === false && useInfo.isAbuse === false, `${ resource } should not fail, no longer blacklisted` );
 				log.throwCheck( resourceInfo.blacklistExpires == null && resourceInfo.blacklistStarts == null && resourceInfo.requests.size === 1, "resource info unexpected", { resourceInfo } );
 			}
 		} ).timeout( Math.max( checkOptions.sampleWindowMs.valueOf(), checkOptions.blacklistDuration.valueOf() ) + checkOptions.obfuscateBlacklistDelayMs.valueOf() + 1000 );
