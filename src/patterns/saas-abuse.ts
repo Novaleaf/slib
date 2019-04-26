@@ -6,13 +6,13 @@ import __ = xlib.lolo;
 
 /** This is a specialized class used for commercial SAAS projects that have a free usage tier, and need to protect against abusive free-tier users.
  * 
- * tracks a given resource, ensuring that multiple (free tier) apiKeys/ip's are not accessing it to get around free usage limits.  
+ * tracks a given resource, ensuring that multiple (free tier) userIds/ip's are not accessing it to get around free usage limits.  
  * 
  * once the abuse threshhold is passed, future requests to the resource are blacklisted.*/
 export class UseLimitFraudCheck {
 
 	constructor( public options: {
-		/** the maximum number of usages from seperate apiKeys to allow during a sample window.   example = 5 */
+		/** the maximum number of usages from seperate userIds to allow during a sample window.   example = 5 */
 		maxValidUses: number;
 		/** how long to track usages.   only usages in this interval are considered.  example = 5min. */
 		sampleWindowMs: number | xlib.time.luxon.Duration;
@@ -46,10 +46,10 @@ export class UseLimitFraudCheck {
 		//clean expired tracks
 
 		let windowStart = now.minus( this.options.sampleWindowMs );
-		for ( const [ apiKey, lastUse ] of resourceInfo.requests ) {
+		for ( const [ userId, lastUse ] of resourceInfo.requests ) {
 			if ( lastUse.valueOf() < windowStart.valueOf() ) {
 				//old, remove as it's expired
-				resourceInfo.requests.delete( apiKey );
+				resourceInfo.requests.delete( userId );
 			}
 		}
 
@@ -65,7 +65,7 @@ export class UseLimitFraudCheck {
 
 	}
 
-	public checkUse( apiKey: string, resource: string ): {
+	public checkUse( userId: string, resource: string ): {
 		/** true if we detect abusive behaviour from this ```userKey```'s access of the ```resource```, 
 		 * regardless of if the accesss should be blocked */
 		isAbuse: boolean;
@@ -109,18 +109,18 @@ export class UseLimitFraudCheck {
 
 
 			//track
-			resourceInfo.requests.set( apiKey, now.toJSDate() );
+			resourceInfo.requests.set( userId, now.toJSDate() );
 
 			//count all calls to the domain in last 5 min
 			//let shouldBlacklist = false;
 			let requestsInSampleWindow = 0;
 			let sampleWindowStart = now.minus( this.options.sampleWindowMs );
-			resourceInfo.requests.forEach( ( lastUse, otherApiKey ) => {
+			resourceInfo.requests.forEach( ( lastUse, otherUserId ) => {
 				if ( lastUse.valueOf() >= sampleWindowStart.valueOf() ) {
 					requestsInSampleWindow++;
 				} else {
 					//old, remove as it's expired
-					resourceInfo.requests.delete( otherApiKey );
+					resourceInfo.requests.delete( otherUserId );
 				}
 			} );
 
