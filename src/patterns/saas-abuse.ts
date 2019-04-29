@@ -52,6 +52,14 @@ export class UseLimitFraudCheck {
 				resourceInfo.requests.delete( userId );
 			}
 		}
+		//clean up starts maybe
+		if ( resourceInfo.blacklistStarts != null && resourceInfo.blacklistStarts.valueOf() < now.valueOf() ) {
+			const newExpires = resourceInfo.blacklistStarts.plus( this.options.blacklistDuration );
+			if ( resourceInfo.blacklistExpires == null || resourceInfo.blacklistExpires.valueOf() < newExpires.valueOf() ) {
+				resourceInfo.blacklistExpires = newExpires;
+			}
+			resourceInfo.blacklistStarts = null;
+		}
 
 		//clean up expires maybe
 		if ( resourceInfo.blacklistExpires != null && resourceInfo.blacklistExpires.valueOf() < now.valueOf() ) {
@@ -59,7 +67,7 @@ export class UseLimitFraudCheck {
 		}
 
 		//delete from storage if not blacklisted and empty
-		if ( resourceInfo.requests.size === 0 && resourceInfo.blacklistExpires == null ) {
+		if ( resourceInfo.requests.size === 0 && resourceInfo.blacklistExpires == null && resourceInfo.blacklistStarts == null ) {
 			this._storage.delete( resource );
 		}
 
