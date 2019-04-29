@@ -37,6 +37,6 @@
   },
   "devDependencies": {},
   "peerDependencies": {
-    "xlib": "^17.1.0"
+    "xlib": "^17.2.0"
   }
 }
