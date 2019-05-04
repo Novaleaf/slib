@@ -15,7 +15,7 @@ import * as __request from "request";
 export { __request };
 
 import zlib = require( "zlib" );
-type IRequestOptions = {
+export type IRequestOptions = {
 	// /** a boolean to set whether status codes other than 2xx should also reject the promise.   by default we set this to FALSE.  (the request module sets it to true by default) 		 * 
 	// */
 	// simple?: boolean;
