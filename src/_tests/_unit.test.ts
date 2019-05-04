@@ -3,6 +3,8 @@ import xlib = require( "xlib" );
 import log = xlib.diagnostics.log;
 import __ = xlib.lolo;
 
+// tslint:disable-next-line: no-submodule-imports
+import { it1, it2 } from "xlib/built/_test/mocha-helper";
 
 
 describe( "saas-abuse tests", () => {
@@ -121,6 +123,83 @@ describe( "saas-abuse tests", () => {
 	} );
 
 
+	describe( "net request lib tests", () => {
 
 
+		it1( async function testRequestLib_basicE2e() {
+			const response = await slib.net.request( { url: "http://example.com" } );
+			log.throwCheck( xlib.reflection.getTypeName( response.body ) === "Buffer", "body not Buffer" );
+			log.throwCheck( ( response.body.toString() ).includes( "Example Domain" ), "expect example.com to include 'Example Domain'" );
+		} );
+
+		it1( async function testRequestLib_technicalFailure_invalidProtocol() {
+			let caughtErr = false;
+			try {
+				await slib.net.request( { url: "hXXPTT://lkajsfduiasreiul.coiaoidfal" } );
+			} catch ( _err ) {
+				caughtErr = true;
+				log.info( "verified error thrown as expected by invalid reqeust() call", { _err, type: xlib.reflection.getTypeName( _err ) } );
+
+				log.throwCheck( _err instanceof slib.net.RequestException, "not instance of RequestError" );
+				let err: slib.net.RequestException = _err;
+
+				log.throwCheck( err.code === "Invalid protocol", `unknown err.code`, err );
+
+				// if ( _err instanceof xlib.net.RequestError ) {
+
+				// }
+			}
+			log.throwCheck( caughtErr === true, "error was not thrown by request() as we expected" );
+		} );
+
+		it1( async function testRequestLib_technicalFailure_ENOTFOUND() {
+			let caughtErr = false;
+			try {
+				await slib.net.request( { url: "http://lkajsfduiasreiul.coiaoidfal" } );
+			} catch ( _err ) {
+				caughtErr = true;
+				log.info( "verified error thrown as expected by invalid reqeust() call", { _err, type: xlib.reflection.getTypeName( _err ) } );
+
+				log.throwCheck( _err instanceof slib.net.RequestException, "not instance of RequestError" );
+				let err: slib.net.RequestException = _err;
+
+				log.throwCheck( err.code === "ENOTFOUND", `unknown err.code`, err );
+
+				// if ( _err instanceof xlib.net.RequestError ) {
+
+				// }
+			}
+			log.throwCheck( caughtErr === true, "error was not thrown by request() as we expected" );
+		} );
+
+		it1( async function testRequestLib_404() {
+			let caughtErr = false;
+			let payload = await slib.net.request( { url: "http://www.example.com/blalkjaseursj" } );
+
+			log.throwCheck( payload.response.statusCode === 404, "response should be 404 not found", payload.response.statusCode );
+
+		} );
+		it1( async function testRequestLib_technicalFailure_ECONNRESET() {
+			let caughtErr = false; let payload: any;
+			try {
+				payload = await slib.net.request( { url: "https://www.novaleaf.com" } );
+			} catch ( _err ) {
+				caughtErr = true;
+				log.info( "verified error thrown as expected by invalid reqeust() call", { _err, type: xlib.reflection.getTypeName( _err ) } );
+
+				log.throwCheck( _err instanceof slib.net.RequestException, "not instance of RequestError" );
+				let err: slib.net.RequestException = _err;
+
+				log.throwCheck( err.code === "ECONNRESET", `unknown err.code`, err );
+
+				// if ( _err instanceof xlib.net.RequestError ) {
+
+				// }
+			}
+			log.throwCheck( caughtErr === true, "error was not thrown by request() as we expected", payload );
+		} );
+
+
+
+	} );
 } );

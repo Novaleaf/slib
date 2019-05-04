@@ -1,6 +1,6 @@
 {
   "name": "slib",
-  "version": "5.3.0",
+  "version": "5.2.1",
   "description": "server (node) specific extensions to the xlib library",
   "main": "./built/_entrypoint.js",
   "repository": {
@@ -22,7 +22,7 @@
     "@types/glob": "^5.0.35",
     "@types/mkdirp": "^0.5.2",
     "@types/mz": "0.0.32",
-    "@types/request-promise": "^4.1.42",
+    "@types/request": "^2.48.1",
     "@types/shelljs": "^0.8.3",
     "del": "^3.0.0",
     "glob": "^7.1.3",
@@ -31,7 +31,6 @@
     "re2": "^1.8.4",
     "readline-promise": "^1.0.3",
     "request": "^2.88.0",
-    "request-promise": "^4.2.4",
     "shelljs": "^0.8.3",
     "tslib": "^1.9.3"
   },
