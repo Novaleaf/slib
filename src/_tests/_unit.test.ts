@@ -203,3 +203,37 @@ describe( "saas-abuse tests", () => {
 
 	} );
 } );
+
+describe( "valididty_module", () => {
+
+	it2( async function checkValidEmails() {
+
+		{
+			let email = "jasons@novaleaf.com";
+			let result = await slib.validation.isEmailValid( email );
+			log.throwCheck( result.isValid === true, "should succeed", { email, result } );
+		}
+		{
+			let email = "jasons@novaleaf.com";
+			let result = await slib.validation.isEmailValid( email, { checkMx: true } );
+			log.throwCheck( result.isValid === true, "should succeed", { email, result } );
+		}
+		{
+			let email = "someone@domain-dowsnt-exist-alskjdfadd.com";
+			let result = await slib.validation.isEmailValid( email );
+			log.throwCheck( result.isValid === true, "should succeed", { email, result } );
+		}
+		{
+			let email = "someone@domain-dowsnt-exist-alskjdfadd.com";
+			let result = await slib.validation.isEmailValid( email, { checkMx: true } );
+			log.throwCheck( result.isValid === false, "should fail, invalid mx", { email, result } );
+		}
+		{
+			let email = "someone@sharklasers.com";
+			let result = await slib.validation.isEmailValid( email );
+			log.throwCheck( result.isValid === false, "should fail, disposable email", { email, result } );
+		}
+
+	} );
+
+} );
