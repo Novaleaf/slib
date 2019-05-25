@@ -52,12 +52,11 @@ export class RequestException extends __.Ex {
 	 * 
 	 * ```EPROTO```: ssl handshake failure, invalid cert, etc
 	 * 
-	 * ```UNKNOWN```: some other technical failure.   check [[message]] for details
+	 * ```UNKNOWN```: some other technical failure, but a code was not generated.   check [[message]] for details
 	 * 
 	 * 
 	 * ***IMPORTANT NOTE***: codes other than those specified may be returned (for various rare system level technical errors).
-	 * such as this list from https://www.npmjs.com/package/core-error-predicates?activeTab=readme#networkerror:
-	 * 
+	 * such as this list from https://www.npmjs.com/package/core-error-predicates?activeTab=readme#networkerror: 
 	 * 
     EADDRINFO
     EADDRNOTAVAIL
@@ -85,8 +84,7 @@ export class RequestException extends __.Ex {
     EAISERVICE
     EAISOCKTYPE
     ESHUTDOWN
-    ENOTFOUND
-
+		ENOTFOUND		
 	*/
 	public code: "ETIMEDOUT" | "ECONNRESET" | "ESOCKETTIMEDOUT" | "Invalid protocol" | "ENOTFOUND" | "EPROTO" | "UNKNOWN"
 		| "ECONNABORTED" | "ECONNREFUSED" | "ENONET"
