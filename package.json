@@ -1,6 +1,6 @@
 {
   "name": "slib",
-  "version": "5.5.1",
+  "version": "5.6.0",
   "description": "server (node) specific extensions to the xlib library",
   "main": "./built/_entrypoint.js",
   "repository": {
