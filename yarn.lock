@@ -211,9 +211,9 @@ delayed-stream@~1.0.0:
   resolved "https://registry.yarnpkg.com/delayed-stream/-/delayed-stream-1.0.0.tgz#df3ae199acadfb7d440aaae0b29e2272b24ec619"
   integrity sha1-3zrhmayt+31ECqrgsp4icrJOxhk=
 
-"disposable-email-domain-list@https://github.com/yzyjim/disposable-email-domain-list":
+"disposable-email-domain-list@https://github.com/jasonswearingen/disposable-email-domain-list":
   version "0.0.0"
-  resolved "https://github.com/yzyjim/disposable-email-domain-list#a41602b64ec124f32979c4da22266606a4329ea6"
+  resolved "https://github.com/jasonswearingen/disposable-email-domain-list#ba43f3fe33372d9fa992bbe72366b86c5d815936"
 
 ecc-jsbn@~0.1.1:
   version "0.1.2"
